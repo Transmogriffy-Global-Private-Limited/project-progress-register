@@ -1,0 +1,72 @@
+openapi: 3.1.0
+info:
+  title: Project Progress Register API
+  version: 0.1.0
+  description: >-
+    Authoritative contract for the implemented Project Progress Register HTTP API.
+    The foundation currently exposes only dependency-safe health endpoints.
+servers:
+  - url: /
+    description: Current application origin
+tags:
+  - name: Health
+    description: Process and dependency health used by operators and the reverse proxy.
+paths:
+  /api/v1/health/live:
+    get:
+      tags: [Health]
+      operationId: getLiveness
+      summary: Check whether the process can serve HTTP
+      description: Does not query PostgreSQL or other downstream dependencies.
+      responses:
+        '200':
+          description: The process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivenessResponse'
+              example:
+                status: ok
+  /api/v1/health/ready:
+    get:
+      tags: [Health]
+      operationId: getReadiness
+      summary: Check whether stateful application traffic can be served
+      description: >-
+        Uses a bounded check for PostgreSQL connectivity and confirms that the
+        checksummed migration ledger matches all migrations embedded in this build.
+      responses:
+        '200':
+          description: PostgreSQL is reachable and the schema is current.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              example:
+                status: ready
+        '503':
+          description: PostgreSQL is unavailable or the schema is not current. Internal details are not exposed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              example:
+                status: not_ready
+components:
+  schemas:
+    LivenessResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    ReadinessResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]

@@ -1,0 +1,26 @@
+{{define "home"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.AppName}}</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <p class="eyebrow">Internal project register</p>
+      <h1>{{.AppName}}</h1>
+      <p class="lede">A simple place for projects, tasks, and chronological progress updates.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="foundation-heading">
+      <h2 id="foundation-heading">Foundation ready</h2>
+      <p>The application shell is running. Account and project workflows will be introduced in the next verified slices.</p>
+      {{if .APIDocsEnabled}}<p><a href="/api/docs/">View the implemented API contract</a></p>{{end}}
+    </section>
+  </main>
+</body>
+</html>
+{{end}}
