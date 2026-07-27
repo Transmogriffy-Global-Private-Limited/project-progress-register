@@ -104,9 +104,14 @@ func TestAPIRoutesRejectOtherMethods(t *testing.T) {
 }
 
 func testHandler(t *testing.T, docsEnabled bool, readinessError error) http.Handler {
+	return testHandlerAtBasePath(t, docsEnabled, readinessError, "")
+}
+
+func testHandlerAtBasePath(t *testing.T, docsEnabled bool, readinessError error, basePath string) http.Handler {
 	t.Helper()
 	handler, err := New(Options{
 		AppName:            "Project Progress Register",
+		BasePath:           basePath,
 		APIDocsEnabled:     docsEnabled,
 		Logger:             slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Readiness:          staticReadiness{err: readinessError},
@@ -120,6 +125,55 @@ func testHandler(t *testing.T, docsEnabled bool, readinessError error) http.Hand
 		t.Fatalf("New() error = %v", err)
 	}
 	return handler
+}
+
+func TestBasePathScopesRoutesRedirectsAssetsDocsAndCookies(t *testing.T) {
+	t.Parallel()
+	handler := testHandlerAtBasePath(t, true, nil, "/backend")
+
+	for _, path := range []string{LivenessPath, OpenAPIPath, "/login"} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("unprefixed %s = %d", path, response.Code)
+		}
+	}
+
+	redirect := httptest.NewRecorder()
+	handler.ServeHTTP(redirect, httptest.NewRequest(http.MethodGet, "/backend", nil))
+	if redirect.Code != http.StatusPermanentRedirect || redirect.Header().Get("Location") != "/backend/" {
+		t.Fatalf("base redirect = %d %q", redirect.Code, redirect.Header().Get("Location"))
+	}
+
+	home := httptest.NewRecorder()
+	handler.ServeHTTP(home, httptest.NewRequest(http.MethodGet, "/backend/", nil))
+	if home.Code != http.StatusSeeOther || home.Header().Get("Location") != "/backend/login" {
+		t.Fatalf("home redirect = %d %q", home.Code, home.Header().Get("Location"))
+	}
+
+	loginPage := httptest.NewRecorder()
+	handler.ServeHTTP(loginPage, httptest.NewRequest(http.MethodGet, "/backend/login", nil))
+	for _, expected := range []string{`href="/backend/assets/app.css"`, `action="/backend/login"`, `href="/backend/setup"`} {
+		if loginPage.Code != http.StatusOK || !strings.Contains(loginPage.Body.String(), expected) {
+			t.Fatalf("login page missing %q: %d %s", expected, loginPage.Code, loginPage.Body.String())
+		}
+	}
+
+	login := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/backend"+LoginAPIPath, strings.NewReader(`{"identifier":"admin","password":"correct password"}`))
+	request.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(login, request)
+	if cookies := login.Result().Cookies(); login.Code != http.StatusOK || len(cookies) != 1 || cookies[0].Path != "/backend/" {
+		t.Fatalf("prefixed login cookie = %d %#v", login.Code, cookies)
+	}
+
+	for _, path := range []string{"/backend" + LivenessPath, "/backend" + OpenAPIPath, "/backend" + APIDocsPath} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
+		if response.Code != http.StatusOK {
+			t.Fatalf("prefixed %s = %d", path, response.Code)
+		}
+	}
 }
 
 type fakeIdentity struct{ currentUser *identity.User }

@@ -17,6 +17,9 @@ func TestLoadWithLookupDefaults(t *testing.T) {
 	if cfg.HTTPAddress != "127.0.0.1:8080" {
 		t.Fatalf("HTTPAddress = %q", cfg.HTTPAddress)
 	}
+	if cfg.BasePath != "" {
+		t.Fatalf("BasePath = %q", cfg.BasePath)
+	}
 	if cfg.APIDocsEnabled {
 		t.Fatal("APIDocsEnabled should default to false")
 	}
@@ -60,6 +63,7 @@ func TestLoadWithLookupAcceptsExplicitValues(t *testing.T) {
 		"APP_NAME":                        "Internal Register",
 		"APP_ENV":                         "production",
 		"HTTP_ADDR":                       "[::1]:9080",
+		"BASE_PATH":                       "/backend",
 		"DATABASE_URL":                    "postgres://runtime.invalid/ppr",
 		"MIGRATION_DATABASE_URL":          "postgres://migration.invalid/ppr",
 		"API_DOCS_ENABLED":                "true",
@@ -75,11 +79,29 @@ func TestLoadWithLookupAcceptsExplicitValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadWithLookup() error = %v", err)
 	}
-	if !cfg.APIDocsEnabled || cfg.Environment != "production" || cfg.ReadinessTimeout != 3*time.Second || cfg.SessionTTL != 24*time.Hour || len(cfg.SessionCSRFKey) != 32 {
+	if !cfg.APIDocsEnabled || cfg.Environment != "production" || cfg.BasePath != "/backend" || cfg.ReadinessTimeout != 3*time.Second || cfg.SessionTTL != 24*time.Hour || len(cfg.SessionCSRFKey) != 32 {
 		t.Fatalf("unexpected config: %#v", cfg)
 	}
 	if cfg.AttachmentMaxBytes != 200<<20 || cfg.AttachmentMaxCount != 20 {
 		t.Fatalf("unexpected attachment config: %#v", cfg)
+	}
+}
+
+func TestLoadWithLookupRejectsInvalidBasePath(t *testing.T) {
+	t.Parallel()
+
+	for _, basePath := range []string{"/", "backend", "/backend/", "/backend//api", "/backend/../api", "/backend api", "/backend?debug"} {
+		basePath := basePath
+		t.Run(basePath, func(t *testing.T) {
+			t.Parallel()
+			_, err := LoadWithLookup(mapLookup(map[string]string{
+				"DATABASE_URL": "postgres://example.invalid/ppr",
+				"BASE_PATH":    basePath,
+			}))
+			if err == nil {
+				t.Fatal("expected invalid base path to be rejected")
+			}
+		})
 	}
 }
 

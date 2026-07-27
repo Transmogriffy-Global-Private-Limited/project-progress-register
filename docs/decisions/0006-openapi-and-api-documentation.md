@@ -14,6 +14,8 @@ Maintain the authoritative OpenAPI 3.1 source at `api/openapi/v1/openapi.yaml`. 
 
 Use `/api/v1` for application JSON routes, `/api/openapi/v1/openapi.yaml` for the raw contract, and `/api/docs/` for the viewer. `API_DOCS_ENABLED` defaults false and controls registration of the raw schema, viewer, and redirect together.
 
+The OpenAPI server URL exposes a `basePath` variable. Runtime `BASE_PATH` mounts all operations below that gateway prefix while keeping the documented operation paths canonical; production uses `/backend`. The embedded Swagger viewer and schema URL use the configured prefix, and Caddy preserves it rather than rewriting it.
+
 Route-coverage tests compare the implemented versioned API route registry with the document. Contract changes update handlers, models, tests, examples, OpenAPI, human semantics, state, plan, and changelog in one slice.
 
 ## Consequences

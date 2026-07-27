@@ -1,6 +1,6 @@
 {{define "login"}}
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in — {{.AppName}}</title><link rel="stylesheet" href="/assets/app.css"></head>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in — {{.AppName}}</title><link rel="stylesheet" href="{{.BasePath}}/assets/app.css"></head>
 <body><main class="shell"><header><p class="eyebrow">Internal project register</p><h1>Sign in</h1></header>
-<section class="panel"><form method="post" action="/login"><label>Username or email<input name="identifier" autocomplete="username" required></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button type="submit">Sign in</button></form>
-{{if .BootstrapAvailable}}<p>First use? <a href="/setup">Create the initial Admin</a>.</p>{{end}}</section></main></body></html>
+<section class="panel"><form method="post" action="{{.BasePath}}/login"><label>Username or email<input name="identifier" autocomplete="username" required></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button type="submit">Sign in</button></form>
+{{if .BootstrapAvailable}}<p>First use? <a href="{{.BasePath}}/setup">Create the initial Admin</a>.</p>{{end}}</section></main></body></html>
 {{end}}

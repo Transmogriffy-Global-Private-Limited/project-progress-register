@@ -16,6 +16,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `ARCHITECTURE.md` — modular-monolith boundaries, runtime topology, startup, persistence, and request flows.
 - `CONFIGURATION.md` — complete environment-variable reference.
 - `LOCAL_DEVELOPMENT.md` — native Windows and PowerShell workflow.
+- `guides/PRODUCTION_DEPLOYMENT.md` — Ubuntu systemd/Caddy hosting, database reset safeguards, bootstrap removal, verification, and rollback.
 - `contracts/API.md` — human-readable semantics for the implemented HTTP API.
 - `integrations/POSTGRESQL.md` — PostgreSQL ownership, migration, readiness, and failure behavior.
 - `integrations/ATTACHMENT_STORAGE.md` — private byte storage, allowlists, state transitions, reconciliation, and authorized downloads.
@@ -29,6 +30,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `plans/0004-project-access.md` — active project, membership, and versioned-geofence implementation plan.
 - `plans/0005-task-register.md` — active task ownership, responsibility, date, and safe-Markdown implementation plan.
 - `plans/0006-progress-updates-and-attachments.md` — active progress, evidence, revision, attachment-storage, and download plan.
+- `plans/0007-production-hosting.md` — `/backend` base path, production database reset, systemd/Caddy hosting, and public verification.
 - `PROJECT_STATE.md` — implemented and verified reality.
 - `AI_CHANGELOG.md` — chronological agent-assisted change record.
 

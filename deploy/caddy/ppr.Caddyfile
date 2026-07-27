@@ -1,0 +1,15 @@
+ppr.transev.site {
+	encode zstd gzip
+
+	@backendRoot path /backend
+	redir @backendRoot /backend/ 308
+
+	@backend path /backend/*
+	handle @backend {
+		reverse_proxy 127.0.0.1:18090
+	}
+
+	handle {
+		respond 404
+	}
+}

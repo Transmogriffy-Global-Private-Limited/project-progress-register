@@ -1,6 +1,6 @@
 # Domain model
 
-Status: Identity is live-verified. Account-administration, project-access, and task behavior pass automated verification; their migrations and database-live lifecycle scripts remain unapplied/unexecuted. Later domain tables remain approved design.
+Status: All five migrations are applied to the reset production database. Identity is live-verified from the earlier disposable cycle; account, project, task, and progress behavior passes automated verification while their guarded database-live lifecycle scripts remain unexecuted against the clean production database. Later review-domain tables remain approved design.
 
 ## Aggregate relationships
 

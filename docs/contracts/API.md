@@ -4,11 +4,11 @@ The authoritative machine-readable source is `../../api/openapi/v1/openapi.yaml`
 
 ## Versioning and representation
 
-Programmatic application routes use `/api/v1` and JSON UTF-8. Health, bootstrap, and login are unauthenticated; session recovery and logout use the `ppr_session` cookie. JSON request bodies require `Content-Type: application/json`, reject unknown fields, and are limited to 64 KiB.
+Programmatic application routes use `/api/v1` and JSON UTF-8. `BASE_PATH` may prepend one deployment prefix to every route; production uses `/backend`, so the public API begins `/backend/api/v1`. Caddy preserves that prefix. Health, bootstrap, and login are unauthenticated; session recovery and logout use the `ppr_session` cookie. JSON request bodies require `Content-Type: application/json`, reject unknown fields, and are limited to 64 KiB.
 
 ## Identity trust and error model
 
-Successful login sets a host-only `ppr_session` cookie with path `/`, `HttpOnly`, `SameSite=Lax`, absolute expiry, and `Secure` in production. The cookie contains 32 random bytes encoded for URLs; PostgreSQL stores only its SHA-256 digest. There is no JWT, bearer token, local-storage token, or public registration route.
+Successful login sets a host-only `ppr_session` cookie with the configured base path plus trailing slash (or `/` without a prefix), `HttpOnly`, `SameSite=Lax`, absolute expiry, and `Secure` in production. The production cookie path is `/backend/`. The cookie contains 32 random bytes encoded for URLs; PostgreSQL stores only its SHA-256 digest. There is no JWT, bearer token, local-storage token, or public registration route.
 
 Every current-session lookup checks the token digest, expiry, revocation, and enabled user state. Login and session recovery return a session-bound `csrf_token`. An authenticated JSON write sends it in `X-CSRF-Token`; HTML forms send `_csrf`. Logout without a current session is idempotently successful.
 
@@ -131,6 +131,8 @@ When `API_DOCS_ENABLED=true`:
 - `GET /api/docs` redirects to the canonical trailing-slash viewer route.
 
 When false, none of these routes are registered and they return `404`. The toggle does not affect ordinary application or health routes.
+
+With `BASE_PATH=/backend`, the same paths are externally `/backend/api/openapi/v1/openapi.yaml` and `/backend/api/docs/`. The OpenAPI `basePath` server variable describes this deployment prefix without duplicating operation paths.
 
 ## Common transport behavior
 

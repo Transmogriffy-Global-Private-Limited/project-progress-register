@@ -7,8 +7,12 @@ info:
     Cookie-authenticated internal API. Login returns a session-bound CSRF token;
     authenticated write requests must send it in X-CSRF-Token.
 servers:
-  - url: /
-    description: Current application origin
+  - url: '{basePath}'
+    description: Current application origin and deployment prefix.
+    variables:
+      basePath:
+        default: /
+        description: Use / for root hosting or the configured BASE_PATH, such as /backend.
 tags:
   - name: Health
     description: Process and dependency health used by operators and the reverse proxy.

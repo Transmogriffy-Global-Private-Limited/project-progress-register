@@ -1,6 +1,6 @@
 # Development plan
 
-Status: Approved product direction; account, project, task, and progress slices implemented with automated verification passing and database-live verification pending
+Status: Approved product direction; production hosting verified over public IPv4 and IPv6 HTTPS
 
 ## Project objective
 
@@ -61,7 +61,7 @@ Detailed plan: `plans/0002-trusted-identity.md`.
 
 ### Feature: Backend account administration
 
-Status: Implemented
+Status: Verified
 
 Phase: 3
 
@@ -145,31 +145,43 @@ Depends on: core workflows.
 
 Objective: Complete useful dashboard query contracts, full Admin audit access, backup/recovery documentation, and production handoff for the separate frontend and operators.
 
+### Feature: Production hosting at `/backend`
+
+Status: Implemented
+
+Phase: 8
+
+Depends on: foundation, trusted identity, and production migration safety.
+
+Objective: Run the backend durably behind Caddy at `ppr.transev.site/backend` with a loopback-only service, clean migrated PostgreSQL state, protected secrets, private attachments, recovery evidence, and prefix-correct contracts.
+
+Verification: Application, database, systemd, listener, loopback health, route isolation, Caddy validation/reload, authoritative IPv4/IPv6 DNS, Let's Encrypt certificate, and public HTTPS behavior pass.
+
+Detailed plan: `plans/0007-production-hosting.md`.
+
 ## Current execution
 
-Current phase: Verified progress
+Current phase: Reporting and operational hardening
 
-Active feature: Progress updates, revisions, evidence, and attachments
+Active feature: Production hosting at `/backend`
 
-Current implementation slice: Step 06 implemented with automated verification passing; database-live lifecycle verification pending
+Current implementation slice: Production hosting, first-Admin bootstrap, bootstrap closure, and temporary docs enablement verified
 
-Last completed slice: Step 06 — progress updates, revisions, upload geotags, per-file verification, private attachments, and recovery
+Last completed slice: Production database reset/migration, prefix support, protected configuration, systemd service, and Caddy activation
 
-Next expected slice: Comments and accepted suggestions
+Next expected slice: Comments, accepted suggestions, and Admin assessments
 
-Blocked by: Database-live verification requires an explicitly disposable, fully migrated database with zero users
+Blocked by: None
 
 ## Next approved work
 
-1. Run the guarded account, project, and task lifecycle verifiers only on an explicitly disposable, fully migrated database with zero users.
-2. Reset the explicitly disposable verification database before real use and configure persistent production security values.
-3. Run the guarded Step 06 database-live verifier only after that disposable zero-user precondition is satisfied.
-4. Implement comments, accepted suggestions, and Admin assessments as the next larger backend slice.
+1. Use a separate disposable database for any guarded account/project/task/progress lifecycle verification.
+2. Implement comments, accepted suggestions, and Admin assessments as the next larger backend slice.
 
 ## Risks and unresolved decisions
 
 - Define the exact dashboard meaning of “needs progress update” before the reporting slice.
-- Define production retention and coordinated database/filesystem backup targets before operational handoff.
+- Define production retention, scheduled database/filesystem backup targets, and a restore drill after real attachment data begins.
 - Email delivery remains deferred; account creation and reset use generated temporary credentials displayed exactly once and require replacement after login.
 - Members with current project access may read other authors' progress revision history; responsibility and creator ownership affect mutation, not project read visibility.
 - Confirm display timezone policy; storage remains UTC.
@@ -179,7 +191,9 @@ Blocked by: Database-live verification requires an explicitly disposable, fully 
 
 Every slice normally runs formatting, focused tests, package tests, `go vet`, build, contract validation, relevant loopback integration checks, residue scan, full verification, `git diff --check`, and `git status --short`. Those checks pass for Steps 03–05, including race detection and both API-documentation toggle smoke modes. Database-modifying verification uses only an explicitly configured disposable test database; the guarded account/project/task lifecycle scripts remain pending because the configured database is not empty.
 
-For Step 06, focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. Migration application and the guarded database-live verifier remain pending because the configured database does not satisfy the required disposable zero-user precondition.
+For Step 06, focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. All five migrations are applied to clean production `pprdb`; the guarded database-live verifier remains intentionally pending for a separate disposable target.
+
+For production hosting, prefix-focused tests, Linux formatting/tidiness/vet/tests/race/build checks, OpenAPI validation, systemd/Caddy validation, migration status, clean row counts, service/listener inspection, loopback liveness/readiness, route isolation, both docs-toggle states, Caddy reload, authoritative IPv4/IPv6 DNS, certificate inspection, and public HTTPS behavior pass. Docs are currently enabled by explicit operator request.
 
 ## V1 completion criteria
 

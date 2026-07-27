@@ -10,7 +10,7 @@ The runtime creates a pool with at most eight connections to suit the 2 GB VPS t
 
 `DATABASE_URL` configures the runtime pool. `MIGRATION_DATABASE_URL` optionally separates schema-owner privileges from the runtime role; it falls back to the runtime URL for simple local development. Both are secrets and must not be logged or committed.
 
-Future production setup should grant the runtime role only the table and sequence operations actually required. The migration role owns DDL. Exact grants will be documented with the first domain migration.
+Production uses separate responsibilities. The protected migration URL connects as the existing schema owner for explicit DDL. The generated `ppr_runtime` login receives database connect, schema usage, table `SELECT`/`INSERT`/`UPDATE`/`DELETE`, and sequence usage/select grants, including matching default privileges for later migrations. It has no superuser, database-creation, or role-creation capability.
 
 ## Migration flow
 
@@ -36,13 +36,15 @@ Migration transactions prevent partially applied SQL within one file. The adviso
 
 Identity transitions keep each durable fact and its audit event together: bootstrap inserts user plus audit; successful login inserts session, updates last-login state, clears its throttle bucket, and audits; failure updates throttle plus audit; logout revokes plus audits. A transaction rollback prevents half-recorded identity state.
 
-Migration `000002_account_administration.sql` adds forced-password-change state; the existing enabled/role index supports the Admin lock query. Account creation inserts user plus audit. Role/enabled mutation locks all enabled Admin rows, checks optimistic version and the final-Admin invariant, updates the account, revokes sessions, and audits. Reset/change operations update the Argon2id hash, change forced-password state, revoke sessions, and audit in one transaction. Automated verification passes; migrations `000002` through `000004` and their database-live lifecycle scripts remain intentionally unexecuted against retained data.
+Migration `000002_account_administration.sql` adds forced-password-change state; the existing enabled/role index supports the Admin lock query. Account creation inserts user plus audit. Role/enabled mutation locks all enabled Admin rows, checks optimistic version and the final-Admin invariant, updates the account, revokes sessions, and audits. Reset/change operations update the Argon2id hash, change forced-password state, revoke sessions, and audit in one transaction.
 
-Migration `000003_project_access.sql` adds projects, temporal project membership, and immutable geofence versions. Partial unique indexes enforce one current membership per Member/project and one current geofence per project. Project mutations and their audit events share transactions; geofence replacement serializes on the project row and preserves every superseded policy. This migration is also authored but intentionally unexecuted during the testing pause.
+Migration `000003_project_access.sql` adds projects, temporal project membership, and immutable geofence versions. Partial unique indexes enforce one current membership per Member/project and one current geofence per project. Project mutations and their audit events share transactions; geofence replacement serializes on the project row and preserves every superseded policy.
 
-Migration `000004_task_register.sql` adds creator-owned tasks with Markdown source, optional responsible user/date, optimistic version, byte-size constraints, and project/creator/responsibility indexes. Task writes lock the authorized active project so concurrent membership removal cannot cross the command boundary; task state and audit commit together. The migration is authored but unexecuted during the pause.
+Migration `000004_task_register.sql` adds creator-owned tasks with Markdown source, optional responsible user/date, optimistic version, byte-size constraints, and project/creator/responsibility indexes. Task writes lock the authorized active project so concurrent membership removal cannot cross the command boundary; task state and audit commit together.
 
-Migration `000005_progress_updates_and_attachments.sql` adds current progress entries, immutable before/after revisions, upload-location/geofence snapshots, idempotency hashes, and attachment metadata/state. Progress creation locks the authorized task/project boundary, confirms the evaluated geofence is still current, commits pending metadata plus progress audit, then filesystem finalization is marked available in a second audited transaction. Revision insertion, current-content update, version increment, and audit share one transaction. The migration is authored but unexecuted while testing is paused.
+Migration `000005_progress_updates_and_attachments.sql` adds current progress entries, immutable before/after revisions, upload-location/geofence snapshots, idempotency hashes, and attachment metadata/state. Progress creation locks the authorized task/project boundary, confirms the evaluated geofence is still current, commits pending metadata plus progress audit, then filesystem finalization is marked available in a second audited transaction. Revision insertion, current-content update, version increment, and audit share one transaction.
+
+On 2026-07-27, the operator-selected `pprdb` target was backed up, dropped, recreated, and migrated from zero to five applied migrations. Users and every business table were confirmed empty afterward. The guarded account/project/task/progress lifecycle verifiers were intentionally not run because they would repopulate the clean production database.
 
 ## Local constraints and verification
 

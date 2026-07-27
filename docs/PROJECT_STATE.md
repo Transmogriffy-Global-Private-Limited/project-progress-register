@@ -23,6 +23,10 @@ As of 2026-07-27
 - Append-only authentication audit events correlated by random request ID and trusted client IP.
 - Server-rendered setup, login, authenticated home, and logout flows.
 - JSON bootstrap, login, session recovery, and logout endpoints with complete OpenAPI/Swagger coverage.
+- Optional canonical `BASE_PATH` mounting across application routes, redirects, compatibility pages, assets, cookies, OpenAPI server selection, and Swagger addressing.
+- Production `ppr.service` running as the unprivileged `ppr` user on `127.0.0.1:18090` with private attachment storage under `/var/lib/ppr/attachments`.
+- Validated and reloaded Caddy routing for `ppr.transev.site/backend/*`; the hostname root and unprefixed application routes are rejected.
+- Reset PostgreSQL 18.4 `pprdb` with five applied migrations, zero initial business rows, a generated least-privileged runtime login, and a verified pre-reset dump.
 
 ## Verification state
 
@@ -30,13 +34,17 @@ Formatting, module tidiness, `go vet`, all Go tests, identity policy tests, HTTP
 
 The human explicitly approved the initially empty remote `pprdb` PostgreSQL 18.4 database for disposable production-target verification. Migration `000001` applied with one ledger entry and zero pending migrations. Live verification passed readiness, concurrent one-winner bootstrap, generic invalid/throttled authentication, successful login and session recovery, CSRF rejection, logout revocation, durable counts/actions, password/session-hash format, complete audit context, and audit update/delete rejection. Foundation and trusted identity are Verified.
 
-The live verifier left one temporary Admin, one revoked session, one throttle row, and 11 authentication audit events in `pprdb`. The human stated that this production database will be reset before real use. `.env.local` still needs a persistent valid `SESSION_CSRF_KEY` and real one-time `BOOTSTRAP_TOKEN`; the verifier intentionally used ephemeral in-memory values.
+The live verifier had left one temporary Admin, one revoked session, one throttle row, and 11 authentication audit events. On 2026-07-27, the explicitly selected `pprdb` was backed up, dropped, recreated, and migrated through `000005`; it now has zero users and zero business rows. The protected production environment contains newly generated persistent CSRF, bootstrap, and runtime-database secrets.
+
+Production loopback verification passes: systemd is enabled/active, the only application listener is `127.0.0.1:18090`, prefixed liveness/readiness return `200`, `/backend` returns `308`, and unprefixed routes return `404`. The first Admin is created, the bootstrap token is removed, and `/backend/setup` now returns `404`. API documentation was disabled for initial deployment and then explicitly enabled by the operator; public Swagger and raw OpenAPI routes return `200`. The complete Caddyfile validates and reloads, and HTTP hostname traffic redirects to HTTPS.
+
+Cloudflare's authoritative A and AAAA records match this VPS. Caddy obtained a Let's Encrypt certificate for `ppr.transev.site`; public IPv4 and IPv6 requests confirm prefixed liveness/readiness `200`, setup `404`, docs `200`, and root/unprefixed routes `404`. Production hosting is externally verified.
 
 ## Not implemented
 
 - Full cross-domain audit viewer; the account slice authors a bounded identity-only viewer.
 - Comments, suggestions, assessments, or dashboard queries.
-- Deployment, Caddy configuration, production database roles, or backup/restore automation.
+- Scheduled database/filesystem backup automation and tested restore orchestration.
 
 ## Implemented; database-live verification pending
 
@@ -48,14 +56,14 @@ The task-register slice adds migration `000004`, project-scoped task list/create
 
 Formatting, module tidiness, vet, all Go tests, focused sanitizer/domain/HTTP coverage, OpenAPI validation and route coverage, build, race detection, `git diff --check`, and both loopback API-documentation toggle smoke modes pass for Steps 03–05. The smoke checks served only on `127.0.0.1` and used an intentionally unavailable database.
 
-Migrations `000002` through `000004` have not been applied to the configured database, and the guarded account/project/task lifecycle scripts have not been run. They require an explicitly disposable, fully migrated database with zero users; the retained identity-verification database is not eligible. No database was modified during this verification run.
+Migrations `000002` through `000004` are applied to the clean production database. The guarded account/project/task lifecycle scripts have not been run there because they deliberately create disposable data and do not belong in production verification.
 
 ## Step 06 implemented; database-live verification pending
 
 The local `anubhab-work` tree contains migration `000005`, chronological progress list/create/detail/update, immutable before/after revisions, shared upload-location/geofence snapshots, per-file verified/non-verified classification, image/document/video allowlists, SHA-256, private staging/final storage, pending reconciliation, authorized downloads, idempotent multipart creation, OpenAPI, tests, documentation, and `verify-live-progress.ps1`.
 
-Every file requires browser-reported coordinates. Only a camera-source image whose coordinates pass current accuracy/geofence policy is verified; existing images, documents, and videos remain non-verified but keep their geotag. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. Migration `000005` and `verify-live-progress.ps1` have not run because they require an explicitly disposable, fully migrated zero-user database.
+Every file requires browser-reported coordinates. Only a camera-source image whose coordinates pass current accuracy/geofence policy is verified; existing images, documents, and videos remain non-verified but keep their geotag. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. Migration `000005` is applied; `verify-live-progress.ps1` remains unexecuted because it requires a disposable, fully migrated zero-user database and would populate production.
 
 ## Next slice
 
-Use `verify-live-progress.ps1` only on an explicitly disposable fully migrated zero-user database. Comments, accepted suggestions, and Admin assessments are the next larger backend slice.
+Use `verify-live-progress.ps1` only on a separate explicitly disposable fully migrated zero-user database. Comments, accepted suggestions, and Admin assessments are the next larger backend slice.

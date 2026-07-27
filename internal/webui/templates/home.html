@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.AppName}}</title>
-  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="{{.BasePath}}/assets/app.css">
 </head>
 <body>
   <main class="shell">
@@ -18,8 +18,8 @@
     <section class="panel" aria-labelledby="foundation-heading">
       <h2 id="foundation-heading">Identity foundation ready</h2>
       <p>Your revocable server-side session is active. Project workflows will arrive in the next verified slices.</p>
-      {{if .APIDocsEnabled}}<p><a href="/api/docs/">View the implemented API contract</a></p>{{end}}
-      <form method="post" action="/logout">
+      {{if .APIDocsEnabled}}<p><a href="{{.BasePath}}/api/docs/">View the implemented API contract</a></p>{{end}}
+      <form method="post" action="{{.BasePath}}/logout">
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
         <button type="submit">Sign out</button>
       </form>

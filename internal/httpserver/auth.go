@@ -13,18 +13,18 @@ import (
 )
 
 type authPageData struct {
-	AppName, Error     string
-	BootstrapAvailable bool
+	AppName, BasePath, Error string
+	BootstrapAvailable       bool
 }
 
 func loginPageHandler(templates *template.Template, options Options) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, _, ok := authenticate(r, options); ok {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
+			http.Redirect(w, r, externalPath(options, "/"), http.StatusSeeOther)
 			return
 		}
 		available, _ := options.Identity.BootstrapAvailable(r.Context())
-		render(w, templates, "login", authPageData{AppName: options.AppName, BootstrapAvailable: available}, options)
+		render(w, templates, "login", authPageData{AppName: options.AppName, BasePath: options.BasePath, BootstrapAvailable: available}, options)
 	}
 }
 
@@ -39,7 +39,7 @@ func setupPageHandler(templates *template.Template, options Options) http.Handle
 			http.NotFound(w, r)
 			return
 		}
-		render(w, templates, "setup", authPageData{AppName: options.AppName}, options)
+		render(w, templates, "setup", authPageData{AppName: options.AppName, BasePath: options.BasePath}, options)
 	}
 }
 
@@ -51,11 +51,11 @@ func loginFormHandler(options Options) http.HandlerFunc {
 		}
 		result, err := options.Identity.Login(r.Context(), identity.LoginInput{Identifier: r.FormValue("identifier"), Password: r.FormValue("password")}, auditContext(r))
 		if err != nil {
-			http.Redirect(w, r, "/login?error=credentials", http.StatusSeeOther)
+			http.Redirect(w, r, externalPath(options, "/login?error=credentials"), http.StatusSeeOther)
 			return
 		}
-		setSessionCookie(w, result.SessionToken, result.ExpiresAt, options.Production)
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		setSessionCookie(w, result.SessionToken, result.ExpiresAt, options.Production, options.BasePath)
+		http.Redirect(w, r, externalPath(options, "/"), http.StatusSeeOther)
 	}
 }
 
@@ -67,10 +67,10 @@ func setupFormHandler(options Options) http.HandlerFunc {
 		}
 		_, err := options.Identity.BootstrapAdmin(r.Context(), identity.BootstrapInput{BootstrapToken: r.FormValue("bootstrap_token"), Username: r.FormValue("username"), Email: r.FormValue("email"), Password: r.FormValue("password")}, auditContext(r))
 		if err != nil {
-			http.Redirect(w, r, "/setup?error=setup", http.StatusSeeOther)
+			http.Redirect(w, r, externalPath(options, "/setup?error=setup"), http.StatusSeeOther)
 			return
 		}
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, externalPath(options, "/login"), http.StatusSeeOther)
 	}
 }
 
@@ -78,8 +78,8 @@ func logoutFormHandler(options Options) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, session, ok := authenticate(r, options)
 		if !ok {
-			clearSessionCookie(w, options.Production)
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			clearSessionCookie(w, options.Production, options.BasePath)
+			http.Redirect(w, r, externalPath(options, "/login"), http.StatusSeeOther)
 			return
 		}
 		if !sameOrigin(r) || !parseForm(w, r) || options.Identity.ValidateCSRF(token, r.FormValue("_csrf")) != nil {
@@ -90,8 +90,8 @@ func logoutFormHandler(options Options) http.HandlerFunc {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-		clearSessionCookie(w, options.Production)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		clearSessionCookie(w, options.Production, options.BasePath)
+		http.Redirect(w, r, externalPath(options, "/login"), http.StatusSeeOther)
 	}
 }
 
@@ -121,7 +121,7 @@ func loginAPIHandler(options Options) http.HandlerFunc {
 			writeIdentityError(w, err)
 			return
 		}
-		setSessionCookie(w, result.SessionToken, result.ExpiresAt, options.Production)
+		setSessionCookie(w, result.SessionToken, result.ExpiresAt, options.Production, options.BasePath)
 		writeJSON(w, http.StatusOK, map[string]any{"user": result.User, "csrf_token": result.CSRFToken, "expires_at": result.ExpiresAt})
 	}
 }
@@ -141,7 +141,7 @@ func logoutAPIHandler(options Options) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, session, ok := authenticate(r, options)
 		if !ok {
-			clearSessionCookie(w, options.Production)
+			clearSessionCookie(w, options.Production, options.BasePath)
 			writeJSON(w, http.StatusOK, map[string]bool{"logged_out": true})
 			return
 		}
@@ -153,7 +153,7 @@ func logoutAPIHandler(options Options) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 			return
 		}
-		clearSessionCookie(w, options.Production)
+		clearSessionCookie(w, options.Production, options.BasePath)
 		writeJSON(w, http.StatusOK, map[string]bool{"logged_out": true})
 	}
 }
@@ -167,12 +167,19 @@ func authenticate(r *http.Request, options Options) (string, identity.Session, b
 	return cookie.Value, session, err == nil
 }
 
-func setSessionCookie(w http.ResponseWriter, token string, expires time.Time, secure bool) {
-	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: token, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, Expires: expires, MaxAge: int(time.Until(expires).Seconds())})
+func setSessionCookie(w http.ResponseWriter, token string, expires time.Time, secure bool, basePath string) {
+	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: token, Path: cookiePath(basePath), HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, Expires: expires, MaxAge: int(time.Until(expires).Seconds())})
 }
 
-func clearSessionCookie(w http.ResponseWriter, secure bool) {
-	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, Expires: time.Unix(1, 0), MaxAge: -1})
+func clearSessionCookie(w http.ResponseWriter, secure bool, basePath string) {
+	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Path: cookiePath(basePath), HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, Expires: time.Unix(1, 0), MaxAge: -1})
+}
+
+func cookiePath(basePath string) string {
+	if basePath == "" {
+		return "/"
+	}
+	return basePath + "/"
 }
 
 func sameOrigin(r *http.Request) bool {

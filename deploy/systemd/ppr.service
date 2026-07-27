@@ -1,0 +1,32 @@
+[Unit]
+Description=Project Progress Register
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=ppr
+Group=ppr
+WorkingDirectory=/var/lib/ppr
+EnvironmentFile=/etc/ppr/ppr.env
+ExecStart=/opt/ppr/bin/ppr serve
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ppr
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

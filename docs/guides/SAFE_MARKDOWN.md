@@ -37,4 +37,4 @@ Rendering occurs before task/project writes when the source is supplied, so a re
 
 ## Verification
 
-`internal/safemarkdown/renderer_test.go` asserts that ordinary Markdown renders and representative script/unsafe-link content is removed. Task service/HTTP coverage and `scripts/verify-live-task-register.ps1` exercise the derived fields. These checks are authored but unexecuted during the human-directed testing pause.
+`internal/safemarkdown/renderer_test.go` asserts that ordinary Markdown renders and representative script/unsafe-link content is removed. Automated task service/HTTP coverage passes. `scripts/verify-live-task-register.ps1` remains an explicitly authorized disposable-database verifier and was not run against the clean production database.

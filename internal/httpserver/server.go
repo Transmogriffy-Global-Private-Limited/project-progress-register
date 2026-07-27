@@ -126,6 +126,7 @@ type ProgressAccess interface {
 // Options contains the explicit dependencies needed by the HTTP transport.
 type Options struct {
 	AppName            string
+	BasePath           string
 	APIDocsEnabled     bool
 	Logger             *slog.Logger
 	Readiness          Readiness
@@ -183,18 +184,45 @@ func New(options Options) (http.Handler, error) {
 
 	if options.APIDocsEnabled {
 		mux.HandleFunc(OpenAPIPath, method(http.MethodGet, openAPIHandler))
-		mux.Handle(APIDocsPath, v5emb.New(options.AppName+" API", OpenAPIPath, APIDocsPath))
+		docsHandler := http.Handler(v5emb.New(options.AppName+" API", externalPath(options, OpenAPIPath), externalPath(options, APIDocsPath)))
+		if options.BasePath != "" {
+			docsHandler = prependRequestPath(options.BasePath, docsHandler)
+		}
+		mux.Handle(APIDocsPath, docsHandler)
 		mux.HandleFunc(strings.TrimSuffix(APIDocsPath, "/"), method(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, APIDocsPath, http.StatusTemporaryRedirect)
+			http.Redirect(w, r, externalPath(options, APIDocsPath), http.StatusTemporaryRedirect)
 		}))
 	}
 
-	return recoverPanics(options.Logger, requestContext(requestLog(options.Logger, securityHeaders(mux)))), nil
+	var handler http.Handler = mux
+	if options.BasePath != "" {
+		outer := http.NewServeMux()
+		outer.Handle(options.BasePath+"/", http.StripPrefix(options.BasePath, mux))
+		outer.HandleFunc(options.BasePath, method(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, options.BasePath+"/", http.StatusPermanentRedirect)
+		}))
+		handler = outer
+	}
+
+	return recoverPanics(options.Logger, requestContext(requestLog(options.Logger, securityHeaders(handler, options.BasePath)))), nil
+}
+
+func externalPath(options Options, path string) string {
+	return options.BasePath + path
+}
+
+func prependRequestPath(prefix string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cloned := r.Clone(r.Context())
+		cloned.URL.Path = prefix + r.URL.Path
+		next.ServeHTTP(w, cloned)
+	})
 }
 
 func homeHandler(templates *template.Template, options Options) http.HandlerFunc {
 	type homeData struct {
 		AppName        string
+		BasePath       string
 		APIDocsEnabled bool
 		User           identity.User
 		CSRFToken      string
@@ -206,7 +234,7 @@ func homeHandler(templates *template.Template, options Options) http.HandlerFunc
 		}
 		token, session, ok := authenticate(r, options)
 		if !ok {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, externalPath(options, "/login"), http.StatusSeeOther)
 			return
 		}
 		if session.User.MustChangePassword {
@@ -214,7 +242,7 @@ func homeHandler(templates *template.Template, options Options) http.HandlerFunc
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		data := homeData{options.AppName, options.APIDocsEnabled, session.User, options.Identity.CSRFToken(token)}
+		data := homeData{options.AppName, options.BasePath, options.APIDocsEnabled, session.User, options.Identity.CSRFToken(token)}
 		if err := templates.ExecuteTemplate(w, "home", data); err != nil {
 			options.Logger.Error("render home page", "error", err)
 		}
@@ -276,12 +304,12 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
-func securityHeaders(next http.Handler) http.Handler {
+func securityHeaders(next http.Handler, basePath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		if strings.HasPrefix(r.URL.Path, APIDocsPath) {
+		if strings.HasPrefix(r.URL.Path, basePath+APIDocsPath) {
 			w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'")
 		} else {
 			w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'")

@@ -14,6 +14,7 @@ const (
 	defaultAppName          = "Project Progress Register"
 	defaultEnvironment      = "development"
 	defaultHTTPAddress      = "127.0.0.1:8080"
+	defaultBasePath         = ""
 	defaultReadinessTimeout = 2 * time.Second
 	defaultShutdownTimeout  = 10 * time.Second
 	defaultSessionTTL       = 12 * time.Hour
@@ -27,6 +28,7 @@ type Config struct {
 	AppName              string
 	Environment          string
 	HTTPAddress          string
+	BasePath             string
 	DatabaseURL          string
 	MigrationDatabaseURL string
 	APIDocsEnabled       bool
@@ -58,6 +60,7 @@ func LoadWithLookup(lookup LookupEnv) (Config, error) {
 		AppName:              valueOrDefault(lookup, "APP_NAME", defaultAppName),
 		Environment:          valueOrDefault(lookup, "APP_ENV", defaultEnvironment),
 		HTTPAddress:          valueOrDefault(lookup, "HTTP_ADDR", defaultHTTPAddress),
+		BasePath:             defaultBasePath,
 		ReadinessTimeout:     defaultReadinessTimeout,
 		ShutdownTimeout:      defaultShutdownTimeout,
 		SessionTTL:           defaultSessionTTL,
@@ -71,6 +74,12 @@ func LoadWithLookup(lookup LookupEnv) (Config, error) {
 	}
 	if err := validateLoopbackAddress(cfg.HTTPAddress); err != nil {
 		return Config{}, fmt.Errorf("HTTP_ADDR: %w", err)
+	}
+	if raw, ok := nonEmptyValue(lookup, "BASE_PATH"); ok {
+		if err := validateBasePath(raw); err != nil {
+			return Config{}, fmt.Errorf("BASE_PATH: %w", err)
+		}
+		cfg.BasePath = raw
 	}
 
 	var ok bool
@@ -200,6 +209,23 @@ func validateLoopbackAddress(address string) error {
 	port, err := strconv.Atoi(portText)
 	if err != nil || port < 1024 || port > 65535 {
 		return fmt.Errorf("port must be an unprivileged port from 1024 through 65535")
+	}
+	return nil
+}
+
+func validateBasePath(value string) error {
+	if value == "/" || !strings.HasPrefix(value, "/") || strings.HasSuffix(value, "/") {
+		return fmt.Errorf("must be empty or a slash-prefixed path without a trailing slash")
+	}
+	for _, segment := range strings.Split(strings.TrimPrefix(value, "/"), "/") {
+		if segment == "" || segment == "." || segment == ".." {
+			return fmt.Errorf("must contain only canonical path segments")
+		}
+		for _, character := range segment {
+			if (character < 'a' || character > 'z') && (character < 'A' || character > 'Z') && (character < '0' || character > '9') && !strings.ContainsRune("-._~", character) {
+				return fmt.Errorf("segments may contain only URL-safe letters, digits, hyphen, dot, underscore, or tilde")
+			}
+		}
 	}
 	return nil
 }

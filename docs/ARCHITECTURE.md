@@ -10,8 +10,8 @@ There is no multi-tenancy, Redis, event broker, microservice, SPA framework, con
 
 ```text
 Browser
-  -> Caddy HTTPS (production only)
-  -> Go HTTP server on loopback
+  -> Caddy HTTPS on ppr.transev.site/backend/* (production only)
+  -> Go HTTP server on 127.0.0.1:18090 with BASE_PATH=/backend
       -> existing minimal authentication/diagnostic shell
       -> identity application service
       -> project access application service
@@ -22,6 +22,8 @@ Browser
 ```
 
 The current foundation contains one `ppr` binary with explicit `serve`, `migrate up`, and `migrate status` commands.
+
+Production runs that binary as the unprivileged `ppr` system user through `ppr.service`. Caddy preserves `/backend` when proxying; the application owns prefix-aware routing, redirects, compatibility-page links, Swagger addressing, and the `/backend/` session-cookie path. The hostname root and every unprefixed application route remain unavailable.
 
 ## Package ownership
 
@@ -74,7 +76,7 @@ Runtime and migration database URLs can differ so production can give the runtim
 
 ## HTTP and contracts
 
-The backend uses `net/http`; JSON APIs and OpenAPI are the product integration boundary. The existing minimal `html/template` authentication/diagnostic shell remains for compatibility but receives no new product features. Request middleware creates a random correlation ID and accepts `X-Forwarded-For` only from a loopback peer, matching the Caddy boundary.
+The backend uses `net/http`; JSON APIs and OpenAPI are the product integration boundary. The existing minimal `html/template` authentication/diagnostic shell remains for compatibility but receives no new product features. `BASE_PATH` optionally mounts the complete transport beneath one canonical prefix without rewriting operation paths. Request middleware creates a random correlation ID and accepts `X-Forwarded-For` only from a loopback peer, matching the Caddy boundary.
 
 `api/openapi/v1/openapi.yaml` is specification-first and authoritative for the implemented JSON API. The same embedded bytes power validation, the raw schema route, and Swagger UI. `API_DOCS_ENABLED=false` prevents both documentation routes from being registered.
 

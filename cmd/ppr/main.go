@@ -105,6 +105,7 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	startAttachmentReconciliation(ctx, logger, progressService)
 	handler, err := httpserver.New(httpserver.Options{
 		AppName:            cfg.AppName,
+		BasePath:           cfg.BasePath,
 		APIDocsEnabled:     cfg.APIDocsEnabled,
 		Logger:             logger,
 		Readiness:          readiness,

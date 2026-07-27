@@ -99,7 +99,7 @@ func adminUserAPIRouter(options Options) http.HandlerFunc {
 				return
 			}
 			if targetID == session.User.ID {
-				clearSessionCookie(w, options.Production)
+				clearSessionCookie(w, options.Production, options.BasePath)
 			}
 			w.Header().Set("Cache-Control", "no-store")
 			writeJSON(w, http.StatusOK, result)
@@ -115,7 +115,7 @@ func adminUserAPIRouter(options Options) http.HandlerFunc {
 			return
 		}
 		if targetID == session.User.ID {
-			clearSessionCookie(w, options.Production)
+			clearSessionCookie(w, options.Production, options.BasePath)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"user": user})
 	}
@@ -140,7 +140,7 @@ func passwordAPIHandler(options Options) http.HandlerFunc {
 			writeIdentityError(w, err)
 			return
 		}
-		clearSessionCookie(w, options.Production)
+		clearSessionCookie(w, options.Production, options.BasePath)
 		writeJSON(w, http.StatusOK, map[string]bool{"password_changed": true, "logged_out": true})
 	}
 }

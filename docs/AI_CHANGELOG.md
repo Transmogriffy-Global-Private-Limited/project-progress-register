@@ -1,5 +1,42 @@
 # AI changelog
 
+## 2026-07-27 — Production docs enabled and first Admin bootstrapped
+
+Status: Verified
+
+- Added `BASE_PATH=/backend` to the ignored repository `.env` and kept `API_DOCS_ENABLED=true` there.
+- Enabled API documentation in the protected production environment, restarted only `ppr.service`, and verified public setup, Swagger, raw OpenAPI, and readiness routes return `200`.
+- The first supplied credential had 11 characters and was rejected by the documented 12-character minimum with `422`; no user was created by that attempt, so bootstrap remained available for a corrected retry.
+- Retried with the operator's policy-valid replacement credential. Bootstrap returned `201`, the enabled Admin row was verified, and login, session recovery, and logout each returned `200`.
+- Removed `BOOTSTRAP_TOKEN`, restarted only `ppr.service`, and verified setup now returns `404` while public Swagger, raw OpenAPI, and readiness remain `200`.
+- No credential or generated secret was written to tracked repository content.
+
+## 2026-07-27 — Production hosting at `/backend`
+
+Status: Verified
+
+Changed:
+
+- Added validated `BASE_PATH` configuration and mounted the complete HTTP surface beneath it, including redirects, compatibility pages, assets, scoped session cookies, OpenAPI server selection, and embedded Swagger addressing.
+- Added prefix-focused configuration/HTTP tests, a reusable hardened systemd unit, a Caddy site template, a production operations guide, and hosting plan 0007.
+- Built a static Linux binary and installed it outside Git at `/opt/ppr/bin/ppr`; installed/enabled `ppr.service` as the unprivileged `ppr` user with private `/var/lib/ppr/attachments`.
+- Corrected the database source from `.env.example` to the operator-created ignored `.env`. Removed the mistakenly created empty `project_progress_register` database and its unused role before service activation.
+- Backed up the selected `pprdb`, verified the dump archive, dropped/recreated only that database, applied migrations `000001` through `000005`, and confirmed zero users and business rows.
+- Generated protected production database, CSRF, and bootstrap secrets outside the repository. Added a non-superuser `ppr_runtime` login with application DML grants while retaining the `.env` PostgreSQL URL only for explicit migrations.
+- Backed up, validated, and reloaded the active Caddyfile with `ppr.transev.site/backend/*` preserved to `127.0.0.1:18090`; root and unprefixed application routes remain unavailable.
+
+Verification:
+
+- Formatting, module tidiness, vet, all tests, race tests, static build, OpenAPI validation/route coverage, systemd-unit validation, Caddy-template validation, and `git diff --check` pass.
+- Migration status reports five applied and zero pending. Production row counts are zero for users, projects, tasks, progress updates, and attachments.
+- At initial activation, `ppr.service` was enabled and active; the application listened only on `127.0.0.1:18090`; prefixed liveness/readiness returned `200`; disabled docs and unprefixed routes returned `404`; setup returned `200` before bootstrap. The later operational follow-up above records the intentional docs enablement and closed setup route.
+- The complete Caddyfile validates/reloads and HTTP hostname traffic redirects to HTTPS. The initial certificate attempt correctly failed while DNS was absent. After A and AAAA records were published, Caddy obtained a valid Let's Encrypt certificate and public IPv4/IPv6 liveness, readiness, setup, disabled-doc, root, and unprefixed-route checks all passed.
+
+Compatibility and artifacts:
+
+- Root hosting remains the default when `BASE_PATH` is empty. Production now requires `/backend` and scopes its cookie accordingly.
+- Production environment, generated secrets, binary, database dump, attachment data, systemd/Caddy runtime files, and logs remain ignored or outside the repository. Nothing was committed or pushed.
+
 ## 2026-07-27 — Progress updates and attachments plan approved
 
 Status: Implemented; automated verification passes, database-live verification pending
