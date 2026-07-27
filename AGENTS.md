@@ -5,7 +5,7 @@ The global `AGENTS.md` remains binding. These rules register the authoritative p
 ## Permanent invariants
 
 - Keep the product a simple progress register: Project, Task, Progress Update, Comment, Suggestion, and Admin Assessment.
-- Use a Go modular monolith, PostgreSQL, server-rendered HTML, focused HTMX, and minimal vanilla JavaScript.
+- This repository is backend-only: use a Go modular monolith, PostgreSQL, and authoritative HTTP/OpenAPI contracts. Do not implement new product frontend pages or client-side workflows here.
 - Do not introduce Node.js production runtime, containers, Redis, microservices, or public listener bindings without explicit approval.
 - Bind local and production application listeners to loopback; Caddy owns external TLS termination.
 - PostgreSQL is the durable source of truth. Browser location and camera evidence are operational evidence, not cryptographic proof.
@@ -56,6 +56,12 @@ Run from PowerShell 7+ at the repository root:
 ```
 
 `scripts/verify-live-identity.ps1` is a manually authorized integration verifier. It requires an already migrated database with zero users, creates one temporary Admin and security/audit rows, and must never be included in routine verification or run against a database whose data must be preserved.
+
+`scripts/verify-live-account-admin.ps1` has the same explicit-authorization and zero-user safety boundary for the complete account lifecycle. Neither live verifier belongs in routine or automatic verification.
+
+`scripts/verify-live-project-access.ps1` extends that boundary through project creation, scoped membership, versioned geofences, access revocation, and project audit. It also requires a fully migrated database with zero users and must never run automatically or against retained data.
+
+`scripts/verify-live-task-register.ps1` extends the zero-user disposable workflow through safe Markdown, task ownership, responsibility, optimistic updates, and inactive-project enforcement. It must never run automatically or against retained data.
 
 Use `.\scripts\run-local.ps1` for loopback-only local serving and `.\scripts\migrate.ps1` for migration status or application.
 

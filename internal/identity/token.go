@@ -18,6 +18,14 @@ func newSessionToken() (string, []byte, error) {
 	return token, hashToken(token), nil
 }
 
+func newTemporaryPassword() (string, error) {
+	raw := make([]byte, 24)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generate temporary password: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(raw) + "aA1!", nil
+}
+
 func hashToken(token string) []byte {
 	digest := sha256.Sum256([]byte(token))
 	return digest[:]

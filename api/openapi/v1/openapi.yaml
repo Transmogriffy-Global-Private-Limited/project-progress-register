@@ -14,6 +14,12 @@ tags:
     description: Process and dependency health used by operators and the reverse proxy.
   - name: Identity
     description: One-time bootstrap, login, session recovery, and logout.
+  - name: User administration
+    description: Admin-only internal account lifecycle operations.
+  - name: Projects
+    description: Project lifecycle, scoped visibility, membership, and versioned site policy.
+  - name: Tasks
+    description: Project-scoped task register, immutable ownership, responsibility, dates, and safe Markdown.
 paths:
   /api/v1/setup/bootstrap:
     post:
@@ -83,6 +89,332 @@ paths:
           description: Session is absent or has been revoked and the cookie is cleared.
           content: {application/json: {schema: {$ref: '#/components/schemas/LogoutResponse'}}}
         '403': {$ref: '#/components/responses/CSRFInvalid'}
+  /api/v1/auth/password:
+    post:
+      tags: [Identity]
+      operationId: changeOwnPassword
+      summary: Replace the authenticated user's password
+      description: Revokes every session including the current session and clears must_change_password. The caller must sign in again.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChangePasswordRequest'}
+      responses:
+        '200':
+          description: Password changed, all sessions revoked, and the cookie cleared.
+          content: {application/json: {schema: {$ref: '#/components/schemas/PasswordChangedResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/CSRFInvalid'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/admin/users:
+    get:
+      tags: [User administration]
+      operationId: listUsers
+      summary: List all internal accounts
+      description: Requires an enabled Admin whose temporary password has already been replaced. Results are ordered by username.
+      security: [{cookieSession: []}]
+      responses:
+        '200':
+          description: Complete small internal account inventory.
+          content: {application/json: {schema: {$ref: '#/components/schemas/UsersResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      tags: [User administration]
+      operationId: createUser
+      summary: Create an Admin or Member
+      description: Generates a temporary password returned only in this no-store response. The user must replace it after login.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateUserRequest'}
+      responses:
+        '201':
+          description: Account created; copy the temporary password now because it cannot be retrieved.
+          headers:
+            Cache-Control: {schema: {type: string, const: no-store}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/CredentialResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/admin/users/{user_id}:
+    patch:
+      tags: [User administration]
+      operationId: updateUser
+      summary: Change an account role or enabled state
+      description: Uses optimistic versioning, revokes all target sessions, and refuses to remove the final enabled Admin.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/UserID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateUserRequest'}
+      responses:
+        '200':
+          description: Account updated and target sessions revoked.
+          content: {application/json: {schema: {$ref: '#/components/schemas/UserResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/admin/users/{user_id}/password-reset:
+    post:
+      tags: [User administration]
+      operationId: resetUserPassword
+      summary: Generate a temporary password for an account
+      description: Replaces the password, sets must_change_password, revokes every target session, and returns the temporary password once.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/UserID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      responses:
+        '200':
+          description: Password reset; copy the temporary password now because it cannot be retrieved.
+          headers:
+            Cache-Control: {schema: {type: string, const: no-store}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/CredentialResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/admin/audit/identity:
+    get:
+      tags: [User administration]
+      operationId: listIdentityAudit
+      summary: List recent authentication and account audit events
+      description: Returns the newest 200 identity, authentication, and account-authorization events. Requires an enabled Admin with no forced password change.
+      security: [{cookieSession: []}]
+      responses:
+        '200':
+          description: Newest identity audit events in reverse chronological order.
+          content: {application/json: {schema: {$ref: '#/components/schemas/IdentityAuditResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /api/v1/projects:
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      summary: List projects visible to the current user
+      description: Admins receive every project. Members receive only projects with a current membership. Inactive projects remain readable for history.
+      security: [{cookieSession: []}]
+      responses:
+        '200':
+          description: Name-ordered authorized project list with current geofence policy when configured.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProjectsResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      tags: [Projects]
+      operationId: createProject
+      summary: Create a project
+      description: Admin-only command. Creates an active project without a geofence or members and appends project.created atomically.
+      security: [{cookieSession: []}]
+      parameters: [{$ref: '#/components/parameters/CSRFToken'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateProjectRequest'}}}
+      responses:
+        '201':
+          description: Project created.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProjectResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/projects/{project_id}:
+    get:
+      tags: [Projects]
+      operationId: getProject
+      summary: Get an authorized project
+      description: Members without current membership receive the same 404 as an unknown identifier.
+      security: [{cookieSession: []}]
+      parameters: [{$ref: '#/components/parameters/ProjectID'}]
+      responses:
+        '200':
+          description: Authorized project and current geofence policy.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProjectResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Projects]
+      operationId: updateProject
+      summary: Replace mutable project fields
+      description: Admin-only optimistic update of name, Markdown description, and active state. Projects are deactivated rather than deleted.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateProjectRequest'}}}
+      responses:
+        '200':
+          description: Project updated.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProjectResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/projects/{project_id}/members:
+    get:
+      tags: [Projects]
+      operationId: listProjectMembers
+      summary: List current project Members
+      description: Admin-only query. Disabled accounts remain visible so access state is explicit.
+      security: [{cookieSession: []}]
+      parameters: [{$ref: '#/components/parameters/ProjectID'}]
+      responses:
+        '200':
+          description: Username-ordered current membership list.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProjectMembersResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/projects/{project_id}/members/{user_id}:
+    put:
+      tags: [Projects]
+      operationId: addProjectMember
+      summary: Add a current project Member
+      description: Admin-only command. The target must currently be an enabled Member account. Historical membership rows are retained.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/UserID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      responses:
+        '201':
+          description: Current membership created.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProjectMemberResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+    delete:
+      tags: [Projects]
+      operationId: removeProjectMember
+      summary: End a current project membership
+      description: Admin-only command. Closes the temporal membership and immediately removes future Member access without erasing history.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/UserID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      responses:
+        '204': {description: Membership ended; no response body.}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/projects/{project_id}/geofence:
+    put:
+      tags: [Projects]
+      operationId: replaceProjectGeofence
+      summary: Create or replace the current site geofence
+      description: Admin-only optimistic command. Closes the previous immutable policy version and inserts the next version atomically.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ReplaceGeofenceRequest'}}}
+      responses:
+        '200':
+          description: New current geofence policy.
+          content: {application/json: {schema: {$ref: '#/components/schemas/GeofenceResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/projects/{project_id}/tasks:
+    get:
+      tags: [Tasks]
+      operationId: listProjectTasks
+      summary: List tasks in an authorized project
+      description: Admins may read every project. Members require current membership. Inactive projects remain readable.
+      security: [{cookieSession: []}]
+      parameters: [{$ref: '#/components/parameters/ProjectID'}]
+      responses:
+        '200':
+          description: Name-ordered task list with Markdown source and sanitized HTML projections.
+          content: {application/json: {schema: {$ref: '#/components/schemas/TasksResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [Tasks]
+      operationId: createTask
+      summary: Create a task in an active project
+      description: Admins or current project Members may create. The authenticated user becomes immutable creator. Responsibility grants no access or edit ownership.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateTaskRequest'}}}
+      responses:
+        '201':
+          description: Task created with version one.
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/projects/{project_id}/tasks/{task_id}:
+    get:
+      tags: [Tasks]
+      operationId: getProjectTask
+      summary: Get a task through authorized project scope
+      description: Unknown, mismatched, and inaccessible identifiers all return 404.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+      responses:
+        '200':
+          description: Task with Markdown source and sanitized HTML projections.
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Tasks]
+      operationId: updateProjectTask
+      summary: Replace mutable task fields
+      description: Admins may edit any task. A Member must be both current project Member and immutable creator. Requires an active project and expected version.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateTaskRequest'}}}
+      responses:
+        '200':
+          description: Task updated and version incremented.
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/health/live:
     get:
       tags: [Health]
@@ -124,6 +456,28 @@ paths:
               example:
                 status: not_ready
 components:
+  parameters:
+    CSRFToken:
+      in: header
+      name: X-CSRF-Token
+      required: true
+      schema: {type: string}
+      description: Session-bound token returned by login or session recovery.
+    UserID:
+      in: path
+      name: user_id
+      required: true
+      schema: {type: string, format: uuid}
+    ProjectID:
+      in: path
+      name: project_id
+      required: true
+      schema: {type: string, format: uuid}
+    TaskID:
+      in: path
+      name: task_id
+      required: true
+      schema: {type: string, format: uuid}
   securitySchemes:
     cookieSession:
       type: apiKey
@@ -152,6 +506,15 @@ components:
     UnsupportedMediaType:
       description: Content-Type must be application/json.
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Forbidden:
+      description: The authenticated account lacks the required role or must replace its temporary password.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Conflict:
+      description: A unique current resource already exists, an expected version is stale, or a protected invariant would be violated.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    NotFound:
+      description: The requested resource does not exist or is outside the caller's authorized scope.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
   schemas:
     BootstrapRequest:
       type: object
@@ -169,17 +532,93 @@ components:
       properties:
         identifier: {type: string, maxLength: 254}
         password: {type: string, maxLength: 128, writeOnly: true}
+    CreateUserRequest:
+      type: object
+      additionalProperties: false
+      required: [username, email, role]
+      properties:
+        username: {type: string, pattern: '^[a-z0-9][a-z0-9._-]{2,31}$'}
+        email: {type: string, format: email, maxLength: 254}
+        role: {type: string, enum: [admin, member]}
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      required: [role, enabled, expected_version]
+      properties:
+        role: {type: string, enum: [admin, member]}
+        enabled: {type: boolean}
+        expected_version: {type: integer, format: int64, minimum: 1}
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [password]
+      properties:
+        password: {type: string, minLength: 12, maxLength: 128, writeOnly: true, description: At least 12 Unicode characters and at most 128 UTF-8 bytes.}
+    CreateProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [name, description_markdown]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        description_markdown: {type: string, maxLength: 20000, description: Maximum is enforced in UTF-8 bytes by the backend.}
+    UpdateProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [name, description_markdown, active, expected_version]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        description_markdown: {type: string, maxLength: 20000}
+        active: {type: boolean}
+        expected_version: {type: integer, format: int64, minimum: 1}
+    ReplaceGeofenceRequest:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude, radius_metres, max_accuracy_metres, expected_version]
+      properties:
+        latitude: {type: number, format: double, minimum: -90, maximum: 90}
+        longitude: {type: number, format: double, minimum: -180, maximum: 180}
+        radius_metres: {type: number, format: double, minimum: 1, maximum: 100000}
+        max_accuracy_metres: {type: number, format: double, minimum: 0.1, maximum: 10000}
+        expected_version: {type: integer, format: int64, minimum: 0, description: Use zero when no current geofence exists.}
+    CreateTaskRequest:
+      type: object
+      additionalProperties: false
+      required: [name, goals_markdown, description_markdown]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 160}
+        goals_markdown: {type: string, maxLength: 20000, description: Maximum is enforced in UTF-8 bytes.}
+        description_markdown: {type: string, maxLength: 50000, description: Maximum is enforced in UTF-8 bytes.}
+        responsible_user_id:
+          oneOf: [{type: string, format: uuid}, {type: 'null'}]
+        target_date:
+          oneOf: [{type: string, format: date}, {type: 'null'}]
+    UpdateTaskRequest:
+      type: object
+      additionalProperties: false
+      required: [name, goals_markdown, description_markdown, responsible_user_id, target_date, expected_version]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 160}
+        goals_markdown: {type: string, maxLength: 20000}
+        description_markdown: {type: string, maxLength: 50000}
+        responsible_user_id:
+          oneOf: [{type: string, format: uuid}, {type: 'null'}]
+        target_date:
+          oneOf: [{type: string, format: date}, {type: 'null'}]
+        expected_version: {type: integer, format: int64, minimum: 1}
     User:
       type: object
       additionalProperties: false
-      required: [id, username, email, role, enabled, created_at]
+      required: [id, username, email, role, enabled, must_change_password, created_at, updated_at, version]
       properties:
         id: {type: string, format: uuid}
         username: {type: string}
         email: {type: string, format: email}
         role: {type: string, enum: [admin, member]}
         enabled: {type: boolean}
+        must_change_password: {type: boolean}
         created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        version: {type: integer, format: int64, minimum: 1}
     UserResponse:
       type: object
       additionalProperties: false
@@ -193,6 +632,161 @@ components:
         user: {$ref: '#/components/schemas/User'}
         csrf_token: {type: string, description: Session-bound token required on authenticated writes.}
         expires_at: {type: string, format: date-time}
+    UsersResponse:
+      type: object
+      additionalProperties: false
+      required: [users]
+      properties:
+        users: {type: array, items: {$ref: '#/components/schemas/User'}}
+    CredentialResponse:
+      type: object
+      additionalProperties: false
+      required: [user, temporary_password]
+      properties:
+        user: {$ref: '#/components/schemas/User'}
+        temporary_password: {type: string, readOnly: true, description: Returned once; never stored or available from later reads.}
+    PasswordChangedResponse:
+      type: object
+      additionalProperties: false
+      required: [password_changed, logged_out]
+      properties:
+        password_changed: {type: boolean, const: true}
+        logged_out: {type: boolean, const: true}
+    Project:
+      type: object
+      additionalProperties: false
+      required: [id, name, description_markdown, description_html, active, created_by, created_at, updated_at, version, geofence]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        description_markdown: {type: string}
+        description_html: {type: string, readOnly: true, description: Backend-rendered allowlist-sanitized HTML derived from description_markdown.}
+        active: {type: boolean}
+        created_by: {type: string, format: uuid}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        version: {type: integer, format: int64, minimum: 1}
+        geofence:
+          oneOf:
+            - {$ref: '#/components/schemas/Geofence'}
+            - {type: 'null'}
+    Geofence:
+      type: object
+      additionalProperties: false
+      required: [id, version, latitude, longitude, radius_metres, max_accuracy_metres, valid_from]
+      properties:
+        id: {type: string, format: uuid}
+        version: {type: integer, format: int64, minimum: 1}
+        latitude: {type: number, format: double}
+        longitude: {type: number, format: double}
+        radius_metres: {type: number, format: double}
+        max_accuracy_metres: {type: number, format: double}
+        valid_from: {type: string, format: date-time}
+    ProjectMember:
+      type: object
+      additionalProperties: false
+      required: [user_id, username, email, enabled, added_at]
+      properties:
+        user_id: {type: string, format: uuid}
+        username: {type: string}
+        email: {type: string, format: email}
+        enabled: {type: boolean}
+        added_at: {type: string, format: date-time}
+    ProjectResponse:
+      type: object
+      additionalProperties: false
+      required: [project]
+      properties: {project: {$ref: '#/components/schemas/Project'}}
+    ProjectsResponse:
+      type: object
+      additionalProperties: false
+      required: [projects]
+      properties: {projects: {type: array, items: {$ref: '#/components/schemas/Project'}}}
+    ProjectMemberResponse:
+      type: object
+      additionalProperties: false
+      required: [member]
+      properties: {member: {$ref: '#/components/schemas/ProjectMember'}}
+    ProjectMembersResponse:
+      type: object
+      additionalProperties: false
+      required: [members]
+      properties: {members: {type: array, items: {$ref: '#/components/schemas/ProjectMember'}}}
+    GeofenceResponse:
+      type: object
+      additionalProperties: false
+      required: [geofence]
+      properties: {geofence: {$ref: '#/components/schemas/Geofence'}}
+    TaskActor:
+      type: object
+      additionalProperties: false
+      required: [user_id, username]
+      properties:
+        user_id: {type: string, format: uuid}
+        username: {type: string}
+    ResponsibleMember:
+      type: object
+      additionalProperties: false
+      required: [user_id, username, enabled]
+      properties:
+        user_id: {type: string, format: uuid}
+        username: {type: string}
+        enabled: {type: boolean}
+    Task:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, name, goals_markdown, goals_html, description_markdown, description_html, created_by, responsible_member, target_date, created_at, updated_at, version]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        name: {type: string}
+        goals_markdown: {type: string}
+        goals_html: {type: string, readOnly: true, description: Backend-rendered allowlist-sanitized HTML.}
+        description_markdown: {type: string}
+        description_html: {type: string, readOnly: true, description: Backend-rendered allowlist-sanitized HTML.}
+        created_by: {$ref: '#/components/schemas/TaskActor'}
+        responsible_member:
+          oneOf:
+            - {$ref: '#/components/schemas/ResponsibleMember'}
+            - {type: 'null'}
+        target_date:
+          oneOf: [{type: string, format: date}, {type: 'null'}]
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        version: {type: integer, format: int64, minimum: 1}
+    TaskResponse:
+      type: object
+      additionalProperties: false
+      required: [task]
+      properties: {task: {$ref: '#/components/schemas/Task'}}
+    TasksResponse:
+      type: object
+      additionalProperties: false
+      required: [tasks]
+      properties: {tasks: {type: array, items: {$ref: '#/components/schemas/Task'}}}
+    IdentityAuditRecord:
+      type: object
+      additionalProperties: false
+      required: [id, action, target_type, outcome, occurred_at, request_id, client_ip, user_agent, details]
+      properties:
+        id: {type: string, format: uuid}
+        actor_user_id: {type: string, format: uuid}
+        actor_username: {type: string}
+        action: {type: string}
+        target_type: {type: string}
+        target_id: {type: string, format: uuid}
+        outcome: {type: string, enum: [succeeded, failed, denied]}
+        occurred_at: {type: string, format: date-time}
+        request_id: {type: string}
+        client_ip: {type: string}
+        user_agent: {type: string}
+        details: {type: object, additionalProperties: true}
+    IdentityAuditResponse:
+      type: object
+      additionalProperties: false
+      required: [audit_events]
+      properties:
+        audit_events: {type: array, maxItems: 200, items: {$ref: '#/components/schemas/IdentityAuditRecord'}}
     LogoutResponse:
       type: object
       additionalProperties: false

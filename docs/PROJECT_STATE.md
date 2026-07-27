@@ -34,11 +34,22 @@ The live verifier left one temporary Admin, one revoked session, one throttle ro
 
 ## Not implemented
 
-- General user administration, final-enabled-Admin enforcement, or password reset.
-- Audit-event viewer.
-- Projects, membership, geofences, tasks, Markdown editing, progress updates, revisions, attachments, comments, suggestions, assessments, or dashboards.
+- Full cross-domain audit viewer; the account slice authors a bounded identity-only viewer.
+- Progress updates, revisions, attachments, comments, suggestions, assessments, or dashboard queries.
 - Deployment, Caddy configuration, production database roles, backup/restore automation, or attachment storage.
+
+## Implemented; database-live verification pending
+
+The backend contains the complete account-administration slice: migration `000002`, Admin list/create/update/reset APIs, generated one-time credentials, forced password replacement, session revocation, optimistic versions, final-enabled-Admin locking, audit actions/query API, OpenAPI, tests, and live verification script.
+
+It also contains the backend project-access slice: migration `000003`, project create/list/detail/update, temporal Member access, immediate scoped-query revocation, versioned current geofence policy, optimistic conflicts, transactional audit, OpenAPI, tests, and `verify-live-project-access.ps1`.
+
+The task-register slice adds migration `000004`, project-scoped task list/create/detail/update, immutable creator ownership, optional responsible Member/date, active-project enforcement, optimistic versions, Goldmark plus Bluemonday sanitized HTML projections, transactional audit, OpenAPI, tests, ADR 0009, the safe-Markdown guide, and `verify-live-task-register.ps1`.
+
+Formatting, module tidiness, vet, all Go tests, focused sanitizer/domain/HTTP coverage, OpenAPI validation and route coverage, build, race detection, `git diff --check`, and both loopback API-documentation toggle smoke modes pass for Steps 03–05. The smoke checks served only on `127.0.0.1` and used an intentionally unavailable database.
+
+Migrations `000002` through `000004` have not been applied to the configured database, and the guarded account/project/task lifecycle scripts have not been run. They require an explicitly disposable, fully migrated database with zero users; the retained identity-verification database is not eligible. No database was modified during this verification run.
 
 ## Next slice
 
-Reset the disposable verification data and configure production secrets before deployment. The next implementation feature is website account administration with final-enabled-Admin enforcement.
+Publish the reviewed Steps 03–05 changes through `anubhab-work` and merge them into `main`. Run database-live lifecycle verification later on an explicitly disposable zero-user database. Verified progress updates and attachments remain the next approved larger backend slice.

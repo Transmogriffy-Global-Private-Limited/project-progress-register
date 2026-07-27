@@ -140,6 +140,59 @@ func TestServiceBootstrapAndSession(t *testing.T) {
 	}
 }
 
+func TestAccountAdministrationService(t *testing.T) {
+	repository := &fakeRepository{}
+	service, err := NewService(context.Background(), repository, ServiceConfig{CSRFKey: make([]byte, 32), SessionTTL: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin := User{ID: "00000000-0000-0000-0000-000000000001", Username: "admin", Role: RoleAdmin, Enabled: true}
+	audit := AuditContext{RequestID: "request-12345678", ClientIP: "127.0.0.1"}
+
+	created, err := service.CreateUser(context.Background(), admin, CreateUserInput{Username: "member.one", Email: "member@example.com", Role: RoleMember}, audit)
+	if err != nil || created.TemporaryPassword == "" || !created.User.MustChangePassword {
+		t.Fatalf("CreateUser() = %#v, %v", created, err)
+	}
+	if repository.lastEvent.Action != "identity.user_created" {
+		t.Fatalf("create audit = %s", repository.lastEvent.Action)
+	}
+
+	enabled := false
+	updated, err := service.UpdateUser(context.Background(), admin, created.User.ID, UpdateUserInput{Role: RoleMember, Enabled: &enabled, ExpectedVersion: 1}, audit)
+	if err != nil || updated.Enabled || updated.Version != 2 {
+		t.Fatalf("UpdateUser() = %#v, %v", updated, err)
+	}
+
+	reset, err := service.ResetPassword(context.Background(), admin, created.User.ID, audit)
+	if err != nil || reset.TemporaryPassword == "" || repository.lastEvent.Action != "identity.password_reset" {
+		t.Fatalf("ResetPassword() = %#v, %v", reset, err)
+	}
+
+	if err := service.ChangePassword(context.Background(), created.User, ChangePasswordInput{Password: "replacement-password-value"}, audit); err != nil {
+		t.Fatalf("ChangePassword() = %v", err)
+	}
+	if repository.lastEvent.Action != "identity.password_changed" {
+		t.Fatalf("change audit = %s", repository.lastEvent.Action)
+	}
+}
+
+func TestAccountAdministrationRequiresReadyAdmin(t *testing.T) {
+	repository := &fakeRepository{}
+	service, err := NewService(context.Background(), repository, ServiceConfig{CSRFKey: make([]byte, 32), SessionTTL: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	audit := AuditContext{RequestID: "request-12345678", ClientIP: "127.0.0.1"}
+	_, err = service.ListUsers(context.Background(), User{ID: "00000000-0000-0000-0000-000000000002", Role: RoleMember, Enabled: true}, audit)
+	if !errors.Is(err, ErrForbidden) || repository.lastEvent.Action != "authorization.admin_users_denied" {
+		t.Fatalf("member ListUsers() = %v event=%s", err, repository.lastEvent.Action)
+	}
+	_, err = service.ListUsers(context.Background(), User{ID: "00000000-0000-0000-0000-000000000001", Role: RoleAdmin, Enabled: true, MustChangePassword: true}, audit)
+	if !errors.Is(err, ErrPasswordChangeNeeded) {
+		t.Fatalf("temporary Admin ListUsers() = %v", err)
+	}
+}
+
 type fakeRepository struct {
 	count                    int
 	record                   UserRecord
@@ -147,6 +200,8 @@ type fakeRepository struct {
 	failures, sessionCreates int
 	session                  Session
 	lastEvent                AuditEvent
+	users                    []User
+	credentialUser           User
 }
 
 func (f *fakeRepository) UserCount(context.Context) (int, error) { return f.count, nil }
@@ -186,4 +241,28 @@ func (f *fakeRepository) RevokeSession(_ context.Context, _ []byte, event AuditE
 func (f *fakeRepository) AppendAudit(_ context.Context, event AuditEvent) error {
 	f.lastEvent = event
 	return nil
+}
+func (f *fakeRepository) ListUsers(context.Context) ([]User, error) { return f.users, nil }
+func (f *fakeRepository) CreateUser(_ context.Context, input NewUser, event AuditEvent) (User, error) {
+	f.lastEvent = event
+	user := f.credentialUser
+	if user.ID == "" {
+		user = User{ID: "00000000-0000-0000-0000-000000000002", Username: input.Username, Email: input.Email, Role: input.Role, Enabled: true, MustChangePassword: true, Version: 1}
+	}
+	return user, nil
+}
+func (f *fakeRepository) UpdateUser(_ context.Context, _ string, input UpdateUserInput, event AuditEvent) (User, error) {
+	f.lastEvent = event
+	return User{ID: "00000000-0000-0000-0000-000000000002", Role: input.Role, Enabled: *input.Enabled, Version: input.ExpectedVersion + 1}, nil
+}
+func (f *fakeRepository) ResetPassword(_ context.Context, targetID, _ string, event AuditEvent) (User, error) {
+	f.lastEvent = event
+	return User{ID: targetID, Username: "member", Enabled: true, MustChangePassword: true, Version: 2}, nil
+}
+func (f *fakeRepository) ChangePassword(_ context.Context, _ string, _ string, event AuditEvent) error {
+	f.lastEvent = event
+	return nil
+}
+func (f *fakeRepository) ListIdentityAudit(context.Context, int) ([]AuditRecord, error) {
+	return []AuditRecord{{Action: "identity.user_created"}}, nil
 }

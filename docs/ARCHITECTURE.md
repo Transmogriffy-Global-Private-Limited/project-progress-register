@@ -12,8 +12,10 @@ There is no multi-tenancy, Redis, event broker, microservice, SPA framework, con
 Browser
   -> Caddy HTTPS (production only)
   -> Go HTTP server on loopback
-      -> server-rendered templates and static assets
+      -> existing minimal authentication/diagnostic shell
       -> identity application service
+      -> project access application service
+          -> stateless safe Markdown renderer
       -> PostgreSQL pool
       -> local attachment storage (future evidence slice)
 ```
@@ -29,6 +31,8 @@ The current foundation contains one `ppr` binary with explicit `serve`, `migrate
 - `internal/health` — bounded readiness orchestration.
 - `internal/httpserver` — HTTP routing, transport behavior, security headers, logging, and error containment.
 - `internal/identity` — account validation, Argon2id password policy, bootstrap, login throttling, opaque sessions, CSRF, audit orchestration, and PostgreSQL identity queries.
+- `internal/projects` — project lifecycle, temporal membership, geofence versions, task ownership/responsibility, scoped PostgreSQL queries, and audit orchestration.
+- `internal/safemarkdown` — Goldmark parsing and Bluemonday allowlist sanitization for derived HTML response fields.
 - `internal/webui` — trusted templates and static assets.
 - `api/openapi/v1` — authoritative version-one OpenAPI document and embedded schema bytes.
 
@@ -42,8 +46,8 @@ Future domain packages will be added only with the vertical slice that uses them
 load and validate environment
 -> create a lazy PostgreSQL pool
 -> load embedded migration metadata
--> construct bounded readiness and PostgreSQL identity repository
--> construct identity policy (including a fixed dummy password verifier)
+-> construct bounded readiness and PostgreSQL identity/project repositories
+-> construct identity policy, shared Markdown renderer, and project/task policy
 -> parse templates and register routes
 -> bind the validated loopback address
 -> serve until SIGINT or SIGTERM
@@ -66,16 +70,18 @@ Runtime and migration database URLs can differ so production can give the runtim
 
 ## HTTP and contracts
 
-The application uses `net/http` and `html/template`. HTML forms and JSON identity endpoints call the same identity service. Request middleware creates a random correlation ID and accepts `X-Forwarded-For` only from a loopback peer, matching the Caddy boundary.
+The backend uses `net/http`; JSON APIs and OpenAPI are the product integration boundary. The existing minimal `html/template` authentication/diagnostic shell remains for compatibility but receives no new product features. Request middleware creates a random correlation ID and accepts `X-Forwarded-For` only from a loopback peer, matching the Caddy boundary.
 
 `api/openapi/v1/openapi.yaml` is specification-first and authoritative for the implemented JSON API. The same embedded bytes power validation, the raw schema route, and Swagger UI. `API_DOCS_ENABLED=false` prevents both documentation routes from being registered.
 
-## Foundation dependencies
+## Dependencies
 
 - `github.com/jackc/pgx/v5` provides the native PostgreSQL driver and bounded connection pool.
 - `github.com/getkin/kin-openapi` validates the committed OpenAPI document during tests; it does not sit in the request path.
 - `github.com/swaggest/swgui/v5emb` provides embedded Swagger UI assets so documentation needs neither Node.js nor a public CDN.
 - `golang.org/x/crypto` provides Argon2id password hashing.
+- `github.com/yuin/goldmark` parses GitHub-flavored Markdown without a Node.js runtime.
+- `github.com/microcosm-cc/bluemonday` applies an explicit UGC HTML allowlist after Markdown rendering.
 
 Migration orchestration remains a small project-owned component because the required behavior is limited to ordered embedded SQL, checksums, advisory locking, transactional forward application, status, and readiness. It does not parse SQL or attempt automatic rollback.
 
@@ -87,9 +93,15 @@ Migration orchestration remains a small project-owned component because the requ
 - Authentication uses random opaque tokens in host-only `HttpOnly`, `SameSite=Lax` cookies. Only token hashes are durable; every request rechecks expiry, revocation, and the user enabled flag.
 - Authenticated writes require an HMAC-derived, session-bound CSRF token. Production cookies additionally set `Secure`.
 - Five failed logins per normalized-identifier/IP pair in 15 minutes block that pair for 15 minutes. Client errors do not disclose account, enabled, or throttle state.
+- Account administration is one identity-owned flow: Admin authorization, normalized account creation, generated temporary credential, role/enabled mutation, password reset/change, session revocation, and audit. PostgreSQL locks enabled Admin rows before a demotion/disable decision and rejects removal of the final enabled Admin.
+- Accounts with `must_change_password=true` may recover the current session, log out, or replace the password, but receive `403` from the retained diagnostic home and from Admin operations. Replacement revokes every session and requires a fresh login.
+- The projects module owns project lifecycle, temporal membership, and versioned geofence policy. Admin scope is global; Member list/detail queries contain the active-membership predicate in PostgreSQL, so an untrusted identifier cannot bypass scope.
+- Project edits use project versions. Geofence replacement locks the project, compares the current geofence version, closes it, and inserts the next immutable policy in one transaction. PostgreSQL numeric constraints protect the accepted coordinate and distance ranges without PostGIS.
+- Tasks live inside the project aggregate. PostgreSQL project locks keep membership stable during task operations; Admins may edit any task while Members require both current access and immutable creator ownership. Responsibility is display/work assignment only and never grants access or ownership.
+- Markdown source is durable truth. Goldmark output passes through Bluemonday before the API returns read-only HTML fields; raw client HTML is never trusted or persisted as rendered truth.
 - Future authorization is centralized in application services and reinforced by project-scoped queries and database constraints.
 - Browser evidence remains explicitly non-cryptographic; see `EVIDENCE_AND_TRUST_MODEL.md`.
 
 ## Recovery model
 
-The process is stateless apart from PostgreSQL and the future attachment root. Restart reconstructs configuration, pools, identity policy, templates, routes, and migration expectations. PostgreSQL preserves accounts, hashed sessions, throttles, and append-only audit events. Expired or revoked sessions stop authenticating immediately; retention cleanup is intentionally deferred.
+The process is stateless apart from PostgreSQL and the future attachment root. Restart reconstructs configuration, pools, identity/project/task policy, the Markdown renderer, compatibility templates, routes, and migration expectations. PostgreSQL preserves accounts, hashed sessions, throttles, projects, access history, geofence versions, task source content, and append-only audit events. Expired or revoked sessions stop authenticating immediately; derived HTML is recreated from stored Markdown and retention cleanup is intentionally deferred.

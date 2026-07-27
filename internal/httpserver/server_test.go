@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/projects"
 )
 
 func TestFoundationRoutes(t *testing.T) {
@@ -78,15 +79,23 @@ func TestAPIRoutesRejectOtherMethods(t *testing.T) {
 	t.Parallel()
 
 	handler := testHandler(t, false, nil)
+	allowedByPath := map[string][]string{}
 	for _, route := range ContractRoutes() {
-		wrongMethod := http.MethodPost
-		if route.Method == http.MethodPost {
-			wrongMethod = http.MethodGet
-		}
+		allowedByPath[route.Path] = append(allowedByPath[route.Path], route.Method)
+	}
+	for path, allowed := range allowedByPath {
 		response := httptest.NewRecorder()
-		handler.ServeHTTP(response, httptest.NewRequest(wrongMethod, route.Path, nil))
-		if response.Code != http.StatusMethodNotAllowed || response.Header().Get("Allow") != route.Method {
-			t.Fatalf("%s %s response = %d Allow=%q", wrongMethod, route.Path, response.Code, response.Header().Get("Allow"))
+		requestPath := strings.ReplaceAll(path, "{user_id}", "22222222-2222-4222-8222-222222222222")
+		requestPath = strings.ReplaceAll(requestPath, "{project_id}", "11111111-1111-4111-8111-111111111111")
+		requestPath = strings.ReplaceAll(requestPath, "{task_id}", "44444444-4444-4444-8444-444444444444")
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodOptions, requestPath, nil))
+		if response.Code != http.StatusMethodNotAllowed {
+			t.Fatalf("OPTIONS %s response = %d", path, response.Code)
+		}
+		for _, method := range allowed {
+			if !strings.Contains(response.Header().Get("Allow"), method) {
+				t.Fatalf("OPTIONS %s Allow=%q, missing %s", path, response.Header().Get("Allow"), method)
+			}
 		}
 	}
 }
@@ -99,6 +108,7 @@ func testHandler(t *testing.T, docsEnabled bool, readinessError error) http.Hand
 		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Readiness:      staticReadiness{err: readinessError},
 		Identity:       fakeIdentity{},
+		Projects:       fakeProjects{},
 	})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -106,23 +116,66 @@ func testHandler(t *testing.T, docsEnabled bool, readinessError error) http.Hand
 	return handler
 }
 
-type fakeIdentity struct{}
+type fakeIdentity struct{ currentUser *identity.User }
+
+type fakeProjects struct{}
+
+func (fakeProjects) ListProjects(context.Context, identity.User, projects.AuditContext) ([]projects.Project, error) {
+	return []projects.Project{{ID: "11111111-1111-4111-8111-111111111111", Name: "Site Alpha", Active: true, Version: 1}}, nil
+}
+func (fakeProjects) GetProject(_ context.Context, _ identity.User, projectID string, _ projects.AuditContext) (projects.Project, error) {
+	return projects.Project{ID: projectID, Name: "Site Alpha", Active: true, Version: 1}, nil
+}
+func (fakeProjects) CreateProject(_ context.Context, _ identity.User, input projects.CreateProjectInput, _ projects.AuditContext) (projects.Project, error) {
+	return projects.Project{ID: "11111111-1111-4111-8111-111111111111", Name: input.Name, DescriptionMarkdown: input.DescriptionMarkdown, Active: true, Version: 1}, nil
+}
+func (fakeProjects) UpdateProject(_ context.Context, _ identity.User, projectID string, input projects.UpdateProjectInput, _ projects.AuditContext) (projects.Project, error) {
+	return projects.Project{ID: projectID, Name: input.Name, DescriptionMarkdown: input.DescriptionMarkdown, Active: *input.Active, Version: input.ExpectedVersion + 1}, nil
+}
+func (fakeProjects) ListMembers(context.Context, identity.User, string, projects.AuditContext) ([]projects.Member, error) {
+	return []projects.Member{{UserID: "22222222-2222-4222-8222-222222222222", Username: "member", Enabled: true}}, nil
+}
+func (fakeProjects) AddMember(_ context.Context, _ identity.User, _ string, userID string, _ projects.AuditContext) (projects.Member, error) {
+	return projects.Member{UserID: userID, Username: "member", Enabled: true}, nil
+}
+func (fakeProjects) RemoveMember(context.Context, identity.User, string, string, projects.AuditContext) error {
+	return nil
+}
+func (fakeProjects) ReplaceGeofence(_ context.Context, _ identity.User, _ string, input projects.ReplaceGeofenceInput, _ projects.AuditContext) (projects.Geofence, error) {
+	return projects.Geofence{ID: "33333333-3333-4333-8333-333333333333", Version: input.ExpectedVersion + 1, Latitude: input.Latitude, Longitude: input.Longitude, RadiusMetres: input.RadiusMetres, MaxAccuracyMetres: input.MaxAccuracyMetres}, nil
+}
+func (fakeProjects) ListTasks(context.Context, identity.User, string, projects.AuditContext) ([]projects.Task, error) {
+	return []projects.Task{{ID: "44444444-4444-4444-8444-444444444444", ProjectID: testProjectID, Name: "Foundation", GoalsHTML: "<p>Goal</p>", DescriptionHTML: "<p>Description</p>", Version: 1}}, nil
+}
+func (fakeProjects) GetTask(_ context.Context, _ identity.User, projectID, taskID string, _ projects.AuditContext) (projects.Task, error) {
+	return projects.Task{ID: taskID, ProjectID: projectID, Name: "Foundation", Version: 1}, nil
+}
+func (fakeProjects) CreateTask(_ context.Context, actor identity.User, projectID string, input projects.CreateTaskInput, _ projects.AuditContext) (projects.Task, error) {
+	return projects.Task{ID: "44444444-4444-4444-8444-444444444444", ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: projects.TaskActor{UserID: actor.ID, Username: actor.Username}, Version: 1}, nil
+}
+func (fakeProjects) UpdateTask(_ context.Context, actor identity.User, projectID, taskID string, input projects.UpdateTaskInput, _ projects.AuditContext) (projects.Task, error) {
+	return projects.Task{ID: taskID, ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: projects.TaskActor{UserID: actor.ID, Username: actor.Username}, Version: input.ExpectedVersion + 1}, nil
+}
 
 func (fakeIdentity) BootstrapAvailable(context.Context) (bool, error) { return true, nil }
 func (fakeIdentity) BootstrapAdmin(context.Context, identity.BootstrapInput, identity.AuditContext) (identity.User, error) {
-	return identity.User{ID: "user-1", Username: "admin", Email: "admin@example.com", Role: identity.RoleAdmin, Enabled: true}, nil
+	return identity.User{ID: "00000000-0000-0000-0000-000000000001", Username: "admin", Email: "admin@example.com", Role: identity.RoleAdmin, Enabled: true, Version: 1}, nil
 }
 func (fakeIdentity) Login(_ context.Context, input identity.LoginInput, _ identity.AuditContext) (identity.LoginResult, error) {
 	if input.Password != "correct password" {
 		return identity.LoginResult{}, identity.ErrInvalidCredentials
 	}
-	return identity.LoginResult{User: identity.User{ID: "user-1", Username: "admin", Role: identity.RoleAdmin, Enabled: true}, SessionToken: "session-token", CSRFToken: "csrf-token", ExpiresAt: time.Now().Add(time.Hour)}, nil
+	return identity.LoginResult{User: identity.User{ID: "00000000-0000-0000-0000-000000000001", Username: "admin", Role: identity.RoleAdmin, Enabled: true, Version: 1}, SessionToken: "session-token", CSRFToken: "csrf-token", ExpiresAt: time.Now().Add(time.Hour)}, nil
 }
-func (fakeIdentity) CurrentSession(_ context.Context, token string) (identity.Session, error) {
+func (f fakeIdentity) CurrentSession(_ context.Context, token string) (identity.Session, error) {
 	if token != "session-token" {
 		return identity.Session{}, identity.ErrUnauthenticated
 	}
-	return identity.Session{ID: "session-1", User: identity.User{ID: "user-1", Username: "admin", Role: identity.RoleAdmin, Enabled: true}, ExpiresAt: time.Now().Add(time.Hour)}, nil
+	user := identity.User{ID: "00000000-0000-0000-0000-000000000001", Username: "admin", Role: identity.RoleAdmin, Enabled: true, Version: 1}
+	if f.currentUser != nil {
+		user = *f.currentUser
+	}
+	return identity.Session{ID: "00000000-0000-0000-0000-000000000010", User: user, ExpiresAt: time.Now().Add(time.Hour)}, nil
 }
 func (fakeIdentity) CSRFToken(string) string { return "csrf-token" }
 func (fakeIdentity) ValidateCSRF(_, supplied string) error {
@@ -133,6 +186,36 @@ func (fakeIdentity) ValidateCSRF(_, supplied string) error {
 }
 func (fakeIdentity) Logout(context.Context, string, identity.User, identity.AuditContext) error {
 	return nil
+}
+func (fakeIdentity) ListUsers(_ context.Context, actor identity.User, _ identity.AuditContext) ([]identity.User, error) {
+	if actor.Role != identity.RoleAdmin || actor.MustChangePassword {
+		return nil, identity.ErrForbidden
+	}
+	return []identity.User{actor}, nil
+}
+func (fakeIdentity) CreateUser(_ context.Context, actor identity.User, input identity.CreateUserInput, _ identity.AuditContext) (identity.CredentialResult, error) {
+	if actor.Role != identity.RoleAdmin {
+		return identity.CredentialResult{}, identity.ErrForbidden
+	}
+	return identity.CredentialResult{User: identity.User{ID: "00000000-0000-0000-0000-000000000002", Username: input.Username, Email: input.Email, Role: input.Role, Enabled: true, MustChangePassword: true, Version: 1}, TemporaryPassword: "temporary-password-value"}, nil
+}
+func (fakeIdentity) UpdateUser(_ context.Context, actor identity.User, _ string, input identity.UpdateUserInput, _ identity.AuditContext) (identity.User, error) {
+	if actor.Role != identity.RoleAdmin {
+		return identity.User{}, identity.ErrForbidden
+	}
+	return identity.User{ID: "00000000-0000-0000-0000-000000000002", Username: "member", Role: input.Role, Enabled: *input.Enabled, Version: input.ExpectedVersion + 1}, nil
+}
+func (fakeIdentity) ResetPassword(_ context.Context, actor identity.User, targetID string, _ identity.AuditContext) (identity.CredentialResult, error) {
+	if actor.Role != identity.RoleAdmin {
+		return identity.CredentialResult{}, identity.ErrForbidden
+	}
+	return identity.CredentialResult{User: identity.User{ID: targetID, Username: "member", MustChangePassword: true}, TemporaryPassword: "temporary-password-value"}, nil
+}
+func (fakeIdentity) ChangePassword(context.Context, identity.User, identity.ChangePasswordInput, identity.AuditContext) error {
+	return nil
+}
+func (fakeIdentity) ListIdentityAudit(context.Context, identity.User, identity.AuditContext) ([]identity.AuditRecord, error) {
+	return []identity.AuditRecord{{ID: "33333333-3333-4333-8333-333333333333", Action: "identity.user_created", TargetType: "user", Outcome: "succeeded", RequestID: "request-12345678", ClientIP: "127.0.0.1", Details: map[string]any{}}}, nil
 }
 
 func TestAuthenticationHTTPContract(t *testing.T) {
@@ -224,7 +307,7 @@ func TestJSONContentTypeAndBrowserOriginChecks(t *testing.T) {
 
 func TestProductionCookieAndTrustedClientIP(t *testing.T) {
 	t.Parallel()
-	handler, err := New(Options{AppName: "Project Progress Register", Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Readiness: staticReadiness{}, Identity: fakeIdentity{}, Production: true})
+	handler, err := New(Options{AppName: "Project Progress Register", Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Readiness: staticReadiness{}, Identity: fakeIdentity{}, Projects: fakeProjects{}, Production: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,6 +328,97 @@ func TestProductionCookieAndTrustedClientIP(t *testing.T) {
 	request.RemoteAddr = "192.0.2.2:1234"
 	if got := clientIP(request); got != "192.0.2.2" {
 		t.Fatalf("untrusted proxy client IP = %q", got)
+	}
+}
+
+func TestAccountAdministrationHTTPContract(t *testing.T) {
+	t.Parallel()
+	handler := testHandler(t, false, nil)
+	cookie := &http.Cookie{Name: SessionCookie, Value: "session-token"}
+
+	list := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, AdminUsersAPIPath, nil)
+	request.AddCookie(cookie)
+	handler.ServeHTTP(list, request)
+	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), `"users"`) {
+		t.Fatalf("list users = %d %s", list.Code, list.Body.String())
+	}
+
+	audit := httptest.NewRecorder()
+	request = httptest.NewRequest(http.MethodGet, AdminIdentityAuditAPIPath, nil)
+	request.AddCookie(cookie)
+	handler.ServeHTTP(audit, request)
+	if audit.Code != http.StatusOK || !strings.Contains(audit.Body.String(), `"identity.user_created"`) {
+		t.Fatalf("identity audit = %d %s", audit.Code, audit.Body.String())
+	}
+
+	create := httptest.NewRecorder()
+	request = httptest.NewRequest(http.MethodPost, AdminUsersAPIPath, strings.NewReader(`{"username":"member","email":"member@example.com","role":"member"}`))
+	request.AddCookie(cookie)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-CSRF-Token", "csrf-token")
+	handler.ServeHTTP(create, request)
+	if create.Code != http.StatusCreated || !strings.Contains(create.Body.String(), `"temporary_password"`) || create.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("create user = %d %s", create.Code, create.Body.String())
+	}
+
+	target := "22222222-2222-4222-8222-222222222222"
+	update := httptest.NewRecorder()
+	request = httptest.NewRequest(http.MethodPatch, AdminUsersAPIPath+"/"+target, strings.NewReader(`{"role":"member","enabled":false,"expected_version":1}`))
+	request.AddCookie(cookie)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-CSRF-Token", "csrf-token")
+	handler.ServeHTTP(update, request)
+	if update.Code != http.StatusOK {
+		t.Fatalf("update user = %d %s", update.Code, update.Body.String())
+	}
+
+	reset := httptest.NewRecorder()
+	request = httptest.NewRequest(http.MethodPost, AdminUsersAPIPath+"/"+target+"/password-reset", nil)
+	request.AddCookie(cookie)
+	request.Header.Set("X-CSRF-Token", "csrf-token")
+	handler.ServeHTTP(reset, request)
+	if reset.Code != http.StatusOK || !strings.Contains(reset.Body.String(), `"temporary_password"`) {
+		t.Fatalf("reset password = %d %s", reset.Code, reset.Body.String())
+	}
+
+	change := httptest.NewRecorder()
+	request = httptest.NewRequest(http.MethodPost, PasswordAPIPath, strings.NewReader(`{"password":"replacement-password-value"}`))
+	request.AddCookie(cookie)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-CSRF-Token", "csrf-token")
+	handler.ServeHTTP(change, request)
+	if change.Code != http.StatusOK || change.Result().Cookies()[0].MaxAge != -1 {
+		t.Fatalf("change password = %d %#v", change.Code, change.Result().Cookies())
+	}
+}
+
+func TestAccountAdministrationRequiresCSRF(t *testing.T) {
+	t.Parallel()
+	handler := testHandler(t, false, nil)
+	request := httptest.NewRequest(http.MethodPost, AdminUsersAPIPath, strings.NewReader(`{"username":"member","email":"member@example.com","role":"member"}`))
+	request.AddCookie(&http.Cookie{Name: SessionCookie, Value: "session-token"})
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("create without CSRF = %d", response.Code)
+	}
+}
+
+func TestForcedPasswordChangeBlocksHome(t *testing.T) {
+	t.Parallel()
+	forced := identity.User{ID: "00000000-0000-0000-0000-000000000002", Username: "member", Role: identity.RoleMember, Enabled: true, MustChangePassword: true, Version: 1}
+	handler, err := New(Options{AppName: "Project Progress Register", Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Readiness: staticReadiness{}, Identity: fakeIdentity{currentUser: &forced}, Projects: fakeProjects{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.AddCookie(&http.Cookie{Name: SessionCookie, Value: "session-token"})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("forced home = %d", response.Code)
 	}
 }
 

@@ -6,17 +6,17 @@ The product vocabulary is intentionally small: Project, Task, Progress Update, C
 
 ## Current state
 
-The implemented foundation slice provides:
+The verified foundation and trusted-identity slices provide:
 
 - a Go modular-monolith application shell;
 - loopback-only HTTP configuration;
-- a server-rendered home page;
+- a minimal server-rendered authentication/diagnostic shell retained for compatibility;
 - liveness and PostgreSQL/schema readiness endpoints;
 - checksummed, forward-only PostgreSQL migration tooling;
 - an authoritative OpenAPI contract and environment-controlled embedded Swagger UI;
 - PowerShell-native local development and verification commands.
 
-Accounts, projects, tasks, updates, attachments, comments, suggestions, assessments, and audit records are planned but are not yet implemented. See `docs/PROJECT_STATE.md` for the exact current boundary.
+The backend additionally contains account-administration, project-access, and task-register slices: user lifecycle APIs, project/membership/geofence policy, creator-owned tasks, responsibility/dates, derived sanitized Markdown, scoped queries, and audit. Automated, contract, race, build, and loopback smoke verification pass; disposable-database lifecycle verification remains pending. Product frontend work is outside this repository. Progress updates, attachments, comments, suggestions, and assessments remain planned. See `docs/PROJECT_STATE.md` for the exact verification boundary.
 
 ## Start here
 

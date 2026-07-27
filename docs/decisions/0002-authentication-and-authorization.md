@@ -1,6 +1,6 @@
 # ADR 0002 — Local accounts and backend authorization
 
-Status: Accepted; identity foundation implemented, account and project authorization pending
+Status: Accepted; automated identity, account, project, and task authorization verification passes; database-live verification remains pending
 
 Date: 2026-07-27
 

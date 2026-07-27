@@ -1,6 +1,6 @@
 # HTTP API contract
 
-The authoritative machine-readable source is `../../api/openapi/v1/openapi.yaml`. This document owns causal semantics that are awkward to express in schema. It describes only implemented behavior.
+The authoritative machine-readable source is `../../api/openapi/v1/openapi.yaml`. This document owns causal semantics that are awkward to express in schema and identifies behavior whose database-live verification remains pending.
 
 ## Versioning and representation
 
@@ -13,6 +13,52 @@ Successful login sets a host-only `ppr_session` cookie with path `/`, `HttpOnly`
 Every current-session lookup checks the token digest, expiry, revocation, and enabled user state. Login and session recovery return a session-bound `csrf_token`. An authenticated JSON write sends it in `X-CSRF-Token`; HTML forms send `_csrf`. Logout without a current session is idempotently successful.
 
 Errors use `{"error":{"code":"...","message":"..."}}`. Unknown users, disabled users, incorrect passwords, and throttled attempts all return `401 invalid_credentials`; clients must not infer the hidden cause. Server errors use a generic message and keep details in secret-free structured logs.
+
+The account-administration operations below pass automated service, HTTP, contract, race, and build verification. Their disposable-database lifecycle verifier remains pending.
+
+## Forced password replacement
+
+Login and session recovery expose `user.must_change_password`. While true, Admin operations return `403 password_change_required`; a frontend must route the user to its credential-replacement workflow. `POST /api/v1/auth/password` requires the session cookie, `X-CSRF-Token`, and a valid new password. One transaction replaces the hash, clears forced-change state, increments the account version, revokes every user session, and appends `identity.password_changed`. Success is `200` with `password_changed` and `logged_out` true; the cookie is cleared and the user signs in again.
+
+## Admin account operations
+
+All `/api/v1/admin/users` operations require an enabled Admin with `must_change_password=false`. Denied attempts append `authorization.admin_users_denied`. Authenticated writes require `X-CSRF-Token`.
+
+- `GET /api/v1/admin/users` returns the complete username-ordered internal account list. The small internal-user requirement does not yet justify pagination.
+- `POST /api/v1/admin/users` accepts normalized `username`, `email`, and `role`. It generates and hashes a temporary password, inserts the account with `must_change_password=true`, and appends `identity.user_created` atomically. `201` returns the temporary password exactly once with `Cache-Control: no-store`; later reads cannot recover it.
+- `PATCH /api/v1/admin/users/{user_id}` requires `role`, `enabled`, and `expected_version`. It locks enabled Admins, rejects stale versions, prevents removal of the final enabled Admin, updates the account/version, revokes all target sessions, and appends `identity.user_updated`. Conflicts return `409` with `conflict` or `last_admin`.
+- `POST /api/v1/admin/users/{user_id}/password-reset` generates a new temporary password, sets forced-change state, increments version, revokes every target session, and appends `identity.password_reset`. `200` returns the credential once with `Cache-Control: no-store`.
+- `GET /api/v1/admin/audit/identity` returns the newest 200 identity, authentication, and account-authorization audit records in reverse chronological order. Actor username is a presentation join; the immutable actor ID and audit row remain authoritative.
+
+This repository does not implement the account-management frontend. A client must treat temporary credentials as single-display secrets, avoid placing them in URLs or persistent browser storage, and discard them after secure handoff.
+
+## Project access
+
+The project-access operations below pass automated service, HTTP, contract, race, and build verification. Their disposable-database lifecycle verifier remains pending. Every project response exposes authoritative `description_markdown` plus read-only `description_html` derived through the shared safe-Markdown renderer.
+
+- `GET /api/v1/projects` returns all projects to Admins and only current memberships to Members. Results include the current geofence or `null`; inactive authorized projects remain visible for historical continuity.
+- `POST /api/v1/projects` is Admin-only and accepts `name` plus `description_markdown`. It creates an active version-1 project without members or geofence and appends `project.created` transactionally.
+- `GET /api/v1/projects/{project_id}` applies the same trusted scope in its PostgreSQL query. Unknown and inaccessible identifiers both return `404 not_found`.
+- `PATCH /api/v1/projects/{project_id}` is Admin-only and requires the full mutable field set plus `expected_version`. It updates name, Markdown description, and active state; stale versions return `409 conflict`. Projects are never deleted in v1.
+- `GET /api/v1/projects/{project_id}/members` is Admin-only and returns current Member accounts, including an explicit enabled flag.
+- `PUT /api/v1/projects/{project_id}/members/{user_id}` is Admin-only, accepts no body, and creates current membership only for an enabled Member-role account. Duplicate current membership returns `409`; an invalid target returns `422 invalid_member`. Membership assignments persist across later role/enable changes; Admin scope supersedes them, disablement blocks login, and returning to enabled Member restores the retained assignments unless an Admin explicitly removed them.
+- `DELETE /api/v1/projects/{project_id}/members/{user_id}` is Admin-only, accepts no body, closes current membership, preserves history, clears that user's current task responsibilities with task-version increments, and returns `204`. Subsequent Member reads lose access immediately; clients should refresh the task list.
+- `PUT /api/v1/projects/{project_id}/geofence` is Admin-only and requires latitude, longitude, radius metres, maximum accepted reported accuracy metres, and `expected_version`. Use version zero for the first policy. The transaction locks the project, rejects stale versions, closes the previous policy, inserts the next immutable version, and appends `project.geofence_updated`.
+
+All project writes require `X-CSRF-Token`. Admin denials append `authorization.project_admin_denied`; inaccessible Member detail reads append `authorization.project_denied`. Membership and geofence mutation audit details contain identifiers/versions, never request bodies or location observations.
+
+## Task register and safe Markdown
+
+Task operations pass automated service, HTTP, sanitizer, contract, race, and build verification; their disposable-database lifecycle verifier remains pending. They are nested below an untrusted `project_id`; repository queries and project locks establish current Admin/member scope before accessing a task. Unknown, mismatched, inaccessible, and non-owner mutation identifiers return the same `404 not_found`.
+
+- `GET /api/v1/projects/{project_id}/tasks` returns the name-ordered authorized task register. Inactive projects remain readable.
+- `POST /api/v1/projects/{project_id}/tasks` accepts name, Markdown goals/description, optional responsible Member UUID, and optional `YYYY-MM-DD` target date. The project must be active. The authenticated actor becomes immutable creator.
+- `GET /api/v1/projects/{project_id}/tasks/{task_id}` returns one authorized task only when both identifiers match.
+- `PATCH /api/v1/projects/{project_id}/tasks/{task_id}` requires the complete mutable field set, explicit nullable responsibility/date fields, and `expected_version`. Admins may update any task; a Member must be its immutable creator and retain current project membership. Stale versions return `409 conflict`; inactive projects return `409 project_inactive`.
+
+Responsibility requires a current enabled Member in the same project and returns `422 invalid_responsible_member` otherwise. It grants no access or editing rights. Task create/update and `task.created`/`task.updated` audit occur in one transaction; denied scoped/ownership operations append `authorization.task_denied` without task content.
+
+Markdown source fields are authoritative. Project `description_html` and task `goals_html`/`description_html` are read-only Goldmark-plus-Bluemonday projections. Clients must never inject source Markdown as HTML. See `../guides/SAFE_MARKDOWN.md`.
 
 ## `POST /api/v1/setup/bootstrap`
 

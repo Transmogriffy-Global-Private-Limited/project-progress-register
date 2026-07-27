@@ -29,6 +29,12 @@ func TestOpenAPIContract(t *testing.T) {
 				present = pathItem.Get != nil
 			} else if route.Method == http.MethodPost {
 				present = pathItem.Post != nil
+			} else if route.Method == http.MethodPatch {
+				present = pathItem.Patch != nil
+			} else if route.Method == http.MethodPut {
+				present = pathItem.Put != nil
+			} else if route.Method == http.MethodDelete {
+				present = pathItem.Delete != nil
 			}
 		}
 		if !present {

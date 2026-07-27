@@ -12,7 +12,7 @@ The user-facing concepts are only Project, Task, Progress Update, Comment, Sugge
 
 V1 has application-local accounts and two global roles: Admin and Member. There is no public self-registration.
 
-Routine account administration must be available through the website. Admins create accounts, disable or re-enable accounts, reset passwords through a secure one-time flow, assign roles, and inspect relevant account and audit information.
+Routine account administration must be available to the product frontend through backend APIs. Admins create accounts, disable or re-enable accounts, reset passwords through a secure one-time flow, assign roles, and inspect relevant account and audit information.
 
 Authentication requires secure password hashing, opaque cookie-based sessions, CSRF protection, login throttling, and audit events. The final enabled Admin cannot be disabled or demoted. Initial bootstrap is a one-time setup concern, not routine administration.
 
@@ -58,9 +58,9 @@ Append-only audit events cover relevant login failures, login/logout, account ad
 
 ## User experience
 
-The UI is mobile-first, comfortable on desktop, accessible by keyboard and assistive technology, uses large touch targets, plain language, and status text that does not rely on colour alone. It must not expose agile-management terminology.
+The product UI is a separate frontend concern. This repository owns the backend contracts, authorization, state, failure behavior, and recovery semantics needed by a mobile-first accessible client; it does not implement product screens.
 
-Primary screens are Home, Project, Task, and Add Progress Update. The precise “needs progress update” dashboard rule remains a non-blocking product decision and will not be invented silently.
+Expected frontend screens remain Home, Project, Task, and Add Progress Update. The precise “needs progress update” dashboard rule remains a non-blocking product decision and will not be invented silently by the backend.
 
 ## Non-goals for v1
 
