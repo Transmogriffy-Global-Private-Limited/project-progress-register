@@ -1,5 +1,24 @@
 # AI changelog
 
+## 2026-07-27 — Backend completion slice implemented
+
+Status: Implemented and automated-verified; database-live/restore verification pending
+
+- Added neutral authorized dashboard aggregates and complete filtered Admin audit access with bounded opaque keyset pagination while retaining the identity-only compatibility endpoint.
+- Added migration `000007` and atomic before/after task revisions, then exposed a project-scoped oldest-first task timeline covering task/progress changes, attachment lifecycle/access, comments, accepted suggestions, and assessments with typed metadata and sanitized Markdown projections.
+- Added guarded coordinated PostgreSQL/attachment backup and confirmed-empty-target restore scripts plus operator documentation. Neither script was executed.
+- Kept the unresolved “needs progress update” policy out of backend semantics; the dashboard exposes factual counts and timestamps only.
+- Added focused tests, route/OpenAPI contracts, and extended the zero-user live verifier. Focused packages, OpenAPI/route coverage, the full formatter/tidy/vet/test/build verifier, race detection, Bash syntax, and all three loopback docs/base-path smoke states pass. Database-live migration/lifecycle and empty-target restore verification were not run.
+
+## 2026-07-27 — Review workflow implemented
+
+Status: Implemented and automated-verified; database-live verification pending
+
+- Added migration `000006` with immutable progress comments, one-to-one accepted suggestions, append-only versioned task assessments, indexes, constraints, and update/delete rejection triggers.
+- Added scoped progress/project services and seven REST operations for comment list/create, idempotent Admin acceptance, task-level accepted suggestions, current assessment, Admin append, and Admin history. Markdown source remains authoritative and responses return sanitized HTML.
+- Added complete OpenAPI/human contracts, service/route tests, the guarded zero-user `verify-live-review.ps1`, the review educational guide, and synchronized architecture, persistence, permission, state, and planning documents.
+- Recorded the operator's implementation-first cadence: continue writing verification assets but do not execute tests until the backend feature set is complete.
+
 ## 2026-07-27 — Prefix-correct hosted response and Swagger contracts
 
 Status: Verified locally; production rehost pending

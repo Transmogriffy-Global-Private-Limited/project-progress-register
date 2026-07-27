@@ -33,6 +33,7 @@ type Repository interface {
 	ResetPassword(context.Context, string, string, AuditEvent) (User, error)
 	ChangePassword(context.Context, string, string, AuditEvent) error
 	ListIdentityAudit(context.Context, int) ([]AuditRecord, error)
+	ListAudit(context.Context, auditPersistenceQuery) ([]AuditRecord, error)
 }
 
 // UserRecord includes the password verifier needed only inside authentication.

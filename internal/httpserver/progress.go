@@ -190,7 +190,7 @@ func writeProgressError(w http.ResponseWriter, err error) {
 	case errors.Is(err, progress.ErrConflict):
 		writeError(w, 409, "conflict", "The progress update already exists or changed since it was loaded.")
 	case errors.Is(err, progress.ErrInactiveProject):
-		writeError(w, 409, "project_inactive", "Progress cannot be changed in an inactive project.")
+		writeError(w, 409, "project_inactive", "Progress and review records cannot be changed in an inactive project.")
 	case errors.Is(err, progress.ErrAttachmentPending):
 		writeError(w, 503, "attachment_pending", "Attachment finalization is pending recovery; retry with the same Idempotency-Key.")
 	case errors.Is(err, progress.ErrAttachmentUnavailable):

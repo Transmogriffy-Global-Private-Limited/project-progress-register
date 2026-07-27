@@ -10,6 +10,8 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `EVIDENCE_AND_TRUST_MODEL.md` — camera, geolocation, metadata, hashing, and tamper-evidence boundaries.
 - `guides/SAFE_MARKDOWN.md` — Markdown source-of-truth, sanitization, frontend contract, limits, and recovery.
 - `guides/PROGRESS_EVIDENCE.md` — upload geotags, per-file verification, multipart retries, and recovery.
+- `guides/REVIEW_WORKFLOW.md` — comments, accepted suggestions, assessments, authorization, conflicts, and frontend recovery.
+- `guides/TASK_TIMELINE.md` — authorized audit-style task chronology, metadata, reconstruction, and trust boundary.
 
 ## Architecture and operations
 
@@ -17,6 +19,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `CONFIGURATION.md` — complete environment-variable reference.
 - `LOCAL_DEVELOPMENT.md` — native Windows and PowerShell workflow.
 - `guides/PRODUCTION_DEPLOYMENT.md` — Ubuntu systemd/Caddy hosting, database reset safeguards, bootstrap removal, verification, and rollback.
+- `guides/BACKUP_AND_RESTORE.md` — coordinated maintenance backup, empty-target restore, validation, recovery, and scheduling boundary.
 - `contracts/API.md` — human-readable semantics for the implemented HTTP API.
 - `integrations/POSTGRESQL.md` — PostgreSQL ownership, migration, readiness, and failure behavior.
 - `integrations/ATTACHMENT_STORAGE.md` — private byte storage, allowlists, state transitions, reconciliation, and authorized downloads.
@@ -31,6 +34,8 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `plans/0005-task-register.md` — active task ownership, responsibility, date, and safe-Markdown implementation plan.
 - `plans/0006-progress-updates-and-attachments.md` — active progress, evidence, revision, attachment-storage, and download plan.
 - `plans/0007-production-hosting.md` — `/backend` base path, production database reset, systemd/Caddy hosting, and public verification.
+- `plans/0008-review-comments-suggestions-assessments.md` — implemented immutable comments, accepted suggestions, and Admin assessment workflow awaiting deferred verification.
+- `plans/0009-reporting-audit-and-recovery.md` — active dashboard summaries, complete Admin audit, and guarded backup/restore plan.
 - `PROJECT_STATE.md` — implemented and verified reality.
 - `AI_CHANGELOG.md` — chronological agent-assisted change record.
 

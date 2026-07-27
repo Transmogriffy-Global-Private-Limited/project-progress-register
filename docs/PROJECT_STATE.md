@@ -45,9 +45,8 @@ Cloudflare's authoritative A and AAAA records match this VPS. Caddy obtained a L
 
 ## Not implemented
 
-- Full cross-domain audit viewer; the account slice authors a bounded identity-only viewer.
-- Comments, suggestions, assessments, or dashboard queries.
-- Scheduled database/filesystem backup automation and tested restore orchestration.
+- Environment-specific off-host backup scheduling/retention and a recorded disposable restore drill.
+- The optional future “needs progress update” classification; factual dashboard fields are implemented without inventing that policy.
 
 ## Implemented; database-live verification pending
 
@@ -67,6 +66,18 @@ The repository contains migration `000005`, chronological progress list/create/d
 
 Every file requires browser-reported coordinates. Only a camera-source image whose coordinates pass current accuracy/geofence policy is verified; existing images, documents, and videos remain non-verified but keep their geotag. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. Migration `000005` is applied; `verify-live-progress.ps1` remains unexecuted because it requires a disposable, fully migrated zero-user database and would populate production.
 
+## Review workflow implemented; verification deferred
+
+The repository contains migration `000006`, immutable scoped progress comments, sanitized Markdown projections, separate one-to-one Admin suggestion acceptance, idempotent acceptance retry, task-level accepted-suggestion reads, current task assessment reads, Admin-only append/history, optimistic immutable assessment versions, transactional state/audit writes, seven REST/OpenAPI operations, focused service/route tests, documentation, and `verify-live-review.ps1`.
+
+The review service/HTTP coverage, OpenAPI validation/route coverage, full verifier, race detection, PowerShell parsing, Bash syntax, and loopback smoke states now pass. Migration `000006` and the data-creating live verifier remain unexecuted; no live service, production database, or hosted contract was changed by this slice.
+
+## Backend completion slice implemented; verification pending
+
+The repository now contains migration `000007` with atomic immutable task before/after revisions; an authorized oldest-first task timeline spanning task/progress revisions, attachment lifecycle/downloads, comments, accepted suggestions, and assessments; a neutral authorized dashboard; complete Admin audit with exact filters and opaque keyset pagination; coordinated maintenance backup and confirmed-empty-target restore scripts; complete OpenAPI/human/operator documentation; focused tests; and an extended guarded live verifier.
+
+After backend feature completion, focused identity/projects/progress/HTTP/migration packages, OpenAPI validation and route coverage, the full formatter/module-tidiness/vet/test/build verifier, all-package race detection, PowerShell and Bash syntax, and docs-enabled/docs-disabled/root/prefixed loopback smoke states pass. Migration `000007`, live workflow, backup, restore, deployment, rehost, and production mutation were not executed. Production remains on five applied migrations and the earlier hosted binary/contract.
+
 ## Next slice
 
-Separately rehost the locally verified contract correction when authorized. Use `verify-live-progress.ps1` only on a separate explicitly disposable fully migrated zero-user database. Comments, accepted suggestions, and Admin assessments remain the next larger backend slice.
+Use only explicitly disposable targets for migration/lifecycle verification and the coordinated restore drill. Production migration application and rehost remain separate authorized operations after those checks.

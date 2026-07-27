@@ -76,8 +76,20 @@ func projectAPIRouter(options Options) http.HandlerFunc {
 			progressUpdatesAPIHandler(options, projectID, parts[2])(w, r)
 		case len(parts) == 5 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "progress-updates" && uuidPattern.MatchString(parts[4]) && (r.Method == http.MethodGet || r.Method == http.MethodPatch):
 			progressUpdateAPIHandler(options, projectID, parts[2], parts[4])(w, r)
+		case len(parts) == 6 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "progress-updates" && uuidPattern.MatchString(parts[4]) && parts[5] == "comments" && (r.Method == http.MethodGet || r.Method == http.MethodPost):
+			progressCommentsAPIHandler(options, projectID, parts[2], parts[4])(w, r)
+		case len(parts) == 8 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "progress-updates" && uuidPattern.MatchString(parts[4]) && parts[5] == "comments" && uuidPattern.MatchString(parts[6]) && parts[7] == "accept" && r.Method == http.MethodPost:
+			acceptSuggestionAPIHandler(options, projectID, parts[2], parts[4], parts[6])(w, r)
 		case len(parts) == 8 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "progress-updates" && uuidPattern.MatchString(parts[4]) && parts[5] == "attachments" && uuidPattern.MatchString(parts[6]) && parts[7] == "content" && r.Method == http.MethodGet:
 			progressAttachmentDownloadHandler(options, projectID, parts[2], parts[4], parts[6])(w, r)
+		case len(parts) == 4 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "accepted-suggestions" && r.Method == http.MethodGet:
+			acceptedSuggestionsAPIHandler(options, projectID, parts[2])(w, r)
+		case len(parts) == 4 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "assessment" && (r.Method == http.MethodGet || r.Method == http.MethodPut):
+			taskAssessmentAPIHandler(options, projectID, parts[2])(w, r)
+		case len(parts) == 4 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "assessments" && r.Method == http.MethodGet:
+			taskAssessmentHistoryAPIHandler(options, projectID, parts[2])(w, r)
+		case len(parts) == 4 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "timeline" && r.Method == http.MethodGet:
+			taskTimelineAPIHandler(options, projectID, parts[2])(w, r)
 		case validProjectResourcePath(parts):
 			w.Header().Set("Allow", allowedProjectMethods(parts))
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -213,7 +225,7 @@ func writeProjectError(w http.ResponseWriter, err error) {
 	case errors.Is(err, projects.ErrInvalidResponsible):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_responsible_member", "The responsible user must be a current enabled project Member.")
 	case errors.Is(err, projects.ErrInactiveProject):
-		writeError(w, http.StatusConflict, "project_inactive", "Tasks cannot be changed in an inactive project.")
+		writeError(w, http.StatusConflict, "project_inactive", "Resources cannot be changed in an inactive project.")
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 	}
@@ -223,9 +235,10 @@ func validProjectResourcePath(parts []string) bool {
 	return len(parts) == 1 ||
 		(len(parts) == 2 && (parts[1] == "members" || parts[1] == "geofence" || parts[1] == "tasks")) ||
 		(len(parts) == 3 && (parts[1] == "members" || parts[1] == "tasks") && uuidPattern.MatchString(parts[2])) ||
-		(len(parts) == 4 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "progress-updates") ||
+		(len(parts) == 4 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && (parts[3] == "progress-updates" || parts[3] == "accepted-suggestions" || parts[3] == "assessment" || parts[3] == "assessments" || parts[3] == "timeline")) ||
 		(len(parts) == 5 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "progress-updates" && uuidPattern.MatchString(parts[4])) ||
-		(len(parts) == 8 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "progress-updates" && uuidPattern.MatchString(parts[4]) && parts[5] == "attachments" && uuidPattern.MatchString(parts[6]) && parts[7] == "content")
+		(len(parts) == 6 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "progress-updates" && uuidPattern.MatchString(parts[4]) && parts[5] == "comments") ||
+		(len(parts) == 8 && parts[1] == "tasks" && uuidPattern.MatchString(parts[2]) && parts[3] == "progress-updates" && uuidPattern.MatchString(parts[4]) && ((parts[5] == "attachments" && uuidPattern.MatchString(parts[6]) && parts[7] == "content") || (parts[5] == "comments" && uuidPattern.MatchString(parts[6]) && parts[7] == "accept")))
 }
 
 func allowedProjectMethods(parts []string) string {
@@ -242,8 +255,20 @@ func allowedProjectMethods(parts []string) string {
 		return "GET, PATCH"
 	case len(parts) == 4 && parts[3] == "progress-updates":
 		return "GET, POST"
+	case len(parts) == 4 && parts[3] == "accepted-suggestions":
+		return "GET"
+	case len(parts) == 4 && parts[3] == "assessment":
+		return "GET, PUT"
+	case len(parts) == 4 && parts[3] == "assessments":
+		return "GET"
+	case len(parts) == 4 && parts[3] == "timeline":
+		return "GET"
 	case len(parts) == 5 && parts[3] == "progress-updates":
 		return "GET, PATCH"
+	case len(parts) == 6 && parts[5] == "comments":
+		return "GET, POST"
+	case len(parts) == 8 && parts[5] == "comments":
+		return "POST"
 	case len(parts) == 8 && parts[5] == "attachments":
 		return "GET"
 	default:

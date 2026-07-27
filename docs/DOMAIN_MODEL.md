@@ -1,6 +1,6 @@
 # Domain model
 
-Status: All five migrations are applied to the reset production database. Identity is live-verified from the earlier disposable cycle; account, project, task, and progress behavior passes automated verification while their guarded database-live lifecycle scripts remain unexecuted against the clean production database. Later review-domain tables remain approved design.
+Status: Production remains at five applied migrations. Migrations `000006` and `000007` plus their consuming backend behavior pass automated verification locally but remain unapplied and database-live unverified.
 
 ## Aggregate relationships
 
@@ -18,6 +18,7 @@ Project
               -> optional accepted-suggestion action
       -> current Admin Assessment
       -> immutable assessment history
+      -> authorized complete timeline read model
 ```
 
 ## Identity
@@ -44,7 +45,7 @@ The system must always retain at least one enabled Admin.
 
 `tasks` belongs to one project and owns name, Markdown goals and description, immutable creator, optional responsible Member, optional calendar target date, optimistic version, and timestamps. It has no deletion or status/Kanban workflow in v1. Responsible assignment is mutable and never defines access or edit ownership. Removing project membership clears that user's current task responsibilities and increments those task versions in the same transaction.
 
-Task writes preserve Markdown source only. Sanitized HTML is derived at read/write response time and never stored as competing truth. Audit records the command and identity without copying unrestricted task content; the product does not require full task-content revision history (progress updates do require revisions in their later slice).
+Task writes preserve Markdown source only. Sanitized HTML is derived at read/write response time and never stored as competing truth. `task_revisions` atomically appends every before/after mutable field set, editor, timestamp, and version transition. This supports complete authorized timeline reconstruction without placing unrestricted content in the security audit stream.
 
 ## Progress updates and revisions
 
@@ -69,6 +70,8 @@ Task writes preserve Markdown source only. Sanitized HTML is derived at read/wri
 ## Audit
 
 `audit_events` is append-only and records actor when known, action, target type and identity, server timestamp, outcome, request correlation, client IP, user agent, and carefully selected context. Database triggers reject updates and deletes. It never stores passwords, bootstrap secrets, session tokens, CSRF tokens, attachment bytes, or unrestricted request bodies.
+
+The task timeline is a separate authorized domain read model, not a projection of the security log. It unions immutable task/progress revisions and review records with attachment lifecycle/access facts, returns event-specific metadata, and omits client IP, request ID, and user agent.
 
 ## Common persistence rules
 

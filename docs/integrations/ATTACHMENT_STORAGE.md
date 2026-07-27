@@ -47,6 +47,6 @@ Downloads use the nested authorized API `content_path`. The HTTP transport const
 
 No endpoint exposes the storage root or key. V1 does not execute, render inline, transcode, thumbnail, extract archives, or run a malware-scanning service.
 
-## Backup and operational limitation
+## Backup and restore
 
-Database and filesystem backups must represent a coordinated recovery point. Final retention, backup automation, and restore drills remain part of operational hardening. Losing the filesystem cannot be repaired from PostgreSQL hashes alone.
+Database and filesystem backups represent one coordinated recovery point. `scripts/backup-ppr.sh` performs a maintenance stop, captures a custom PostgreSQL dump plus attachment archive, hashes both, and restores prior service state. `scripts/restore-ppr.sh` verifies hashes and refuses non-empty targets. Losing the filesystem cannot be repaired from PostgreSQL hashes alone. See `../guides/BACKUP_AND_RESTORE.md`; off-host scheduling, retention, and the first restore drill remain operator actions rather than hidden application behavior.

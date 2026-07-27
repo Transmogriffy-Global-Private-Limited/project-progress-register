@@ -65,6 +65,10 @@ Run from PowerShell 7+ at the repository root:
 
 `scripts/verify-live-progress.ps1` extends the same zero-user boundary through geotagged image/document uploads, per-file verification, revisions, private storage, downloads, and audit. It must never run automatically or against retained data.
 
+`scripts/verify-live-review.ps1` extends that guarded disposable workflow through immutable comments, Admin-only idempotent suggestion acceptance, current assessments, optimistic assessment history, and review audit. It must never run automatically or against retained data.
+
+`scripts/backup-ppr.sh` and `scripts/restore-ppr.sh` are production maintenance tools. Backup intentionally stops only `ppr.service` for a coordinated database/filesystem point. Restore is destructive to the explicitly supplied empty targets and requires the service stopped plus `--confirm-empty-target`; never run either tool without explicit operational authorization.
+
 Use `.\scripts\run-local.ps1` for loopback-only local serving and `.\scripts\migrate.ps1` for migration status or application.
 
 Every meaningful slice ends with focused verification, a residue scan, full verification, `git diff --check`, and `git status --short`.

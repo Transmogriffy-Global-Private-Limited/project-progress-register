@@ -277,6 +277,48 @@ func (r *PostgresRepository) ListIdentityAudit(ctx context.Context, limit int) (
 	return records, nil
 }
 
+func (r *PostgresRepository) ListAudit(ctx context.Context, query auditPersistenceQuery) ([]AuditRecord, error) {
+	var cursorTime *time.Time
+	cursorID := ""
+	if query.Cursor != nil {
+		cursorTime = &query.Cursor.OccurredAt
+		cursorID = query.Cursor.ID
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT a.id::text,COALESCE(a.actor_user_id::text,''),COALESCE(u.username,''),
+		       a.action,a.target_type,COALESCE(a.target_id::text,''),a.outcome,
+		       a.occurred_at,a.request_id,host(a.client_ip),a.user_agent,a.details
+		FROM public.audit_events a
+		LEFT JOIN public.users u ON u.id=a.actor_user_id
+		WHERE ($1='' OR a.action=$1)
+		  AND ($2='' OR a.outcome=$2)
+		  AND ($3='' OR a.actor_user_id::text=$3)
+		  AND ($4='' OR a.target_type=$4)
+		  AND ($5::timestamptz IS NULL OR a.occurred_at<$5 OR (a.occurred_at=$5 AND a.id::text<$6))
+		ORDER BY a.occurred_at DESC,a.id DESC
+		LIMIT $7`, query.Action, query.Outcome, query.ActorUserID, query.TargetType, cursorTime, cursorID, query.Limit+1)
+	if err != nil {
+		return nil, fmt.Errorf("query complete audit: %w", err)
+	}
+	defer rows.Close()
+	records := []AuditRecord{}
+	for rows.Next() {
+		var record AuditRecord
+		var details []byte
+		if err := rows.Scan(&record.ID, &record.ActorUserID, &record.ActorUsername, &record.Action, &record.TargetType, &record.TargetID, &record.Outcome, &record.OccurredAt, &record.RequestID, &record.ClientIP, &record.UserAgent, &details); err != nil {
+			return nil, fmt.Errorf("scan complete audit: %w", err)
+		}
+		if err := json.Unmarshal(details, &record.Details); err != nil {
+			return nil, fmt.Errorf("decode complete audit details: %w", err)
+		}
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate complete audit: %w", err)
+	}
+	return records, nil
+}
+
 func (r *PostgresRepository) CreateUser(ctx context.Context, input NewUser, event AuditEvent) (User, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {

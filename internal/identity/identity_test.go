@@ -266,3 +266,6 @@ func (f *fakeRepository) ChangePassword(_ context.Context, _ string, _ string, e
 func (f *fakeRepository) ListIdentityAudit(context.Context, int) ([]AuditRecord, error) {
 	return []AuditRecord{{Action: "identity.user_created"}}, nil
 }
+func (f *fakeRepository) ListAudit(context.Context, auditPersistenceQuery) ([]AuditRecord, error) {
+	return []AuditRecord{}, nil
+}

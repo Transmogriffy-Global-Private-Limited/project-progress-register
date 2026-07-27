@@ -56,6 +56,8 @@ Only an Admin sets or changes the current task assessment. Initial verdicts are 
 
 Append-only audit events cover relevant login failures, login/logout, account administration, projects, membership, geofences, tasks, progress revisions, attachments and downloads, comments, suggestion acceptance, and assessments. Events capture actor, action, target, server time, result, and useful request context without secrets.
 
+Every Admin or current project Member who can view a task can also view its complete oldest-first domain timeline: task/progress edits, attachment lifecycle and downloads, comments, accepted suggestions, and assessment history with actor, server time, entity, and event-specific metadata. This user-facing chronology excludes security-only request context such as client IP and request identifiers.
+
 ## User experience
 
 The product UI is a separate frontend concern. This repository owns the backend contracts, authorization, state, failure behavior, and recovery semantics needed by a mobile-first accessible client; it does not implement product screens.

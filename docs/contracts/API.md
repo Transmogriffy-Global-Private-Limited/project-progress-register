@@ -74,6 +74,26 @@ Each file is streamed, bounded, allowlisted by detected bytes, SHA-256 hashed, a
 
 Successful downloads set attachment disposition, detected MIME, `private, no-store`, and `nosniff`. Audit records progress creation/edit, attachment availability, download intent, and scoped denial without storing Markdown, file bytes, geolocation, or filesystem paths in audit details.
 
+## Comments, accepted suggestions, and assessments
+
+- `GET .../progress-updates/{update_id}/comments` returns immutable comments oldest-first for an authorized project reader. Each item includes Markdown source, sanitized HTML, author/time, and either its separate acceptance record or `null`.
+- `POST` on that comments path accepts `content_markdown` and returns `201`. Admins and current Members may comment only while the project is active. The backend requires non-whitespace content, at most 10,000 Unicode characters and 20,000 UTF-8 bytes.
+- `POST .../comments/{comment_id}/accept` is Admin-only and requires CSRF. The first scoped acceptance inserts a separate immutable record plus `suggestion.accepted` audit and returns `201` with `created=true`. A retry returns the same record with `200` and `created=false`; it creates no duplicate audit row and never edits the source comment.
+- `GET .../tasks/{task_id}/accepted-suggestions` returns accepted comments oldest by acceptance time with source update, author, accepting Admin, and both timestamps. Admins and current project Members may read it, including for an inactive but still authorized project.
+- `GET .../tasks/{task_id}/assessment` returns `200` with the latest assessment or `{"assessment":null}`. Admins and current project Members may read it.
+- `PUT` on that assessment path is Admin-only, requires CSRF, and appends an immutable assessment. The body contains `verdict`, nonblank `remark_markdown`, and `expected_version`. Supported verdicts are `on_track`, `needs_attention`, `blocked`, and `complete`; remarks share the comment size bounds and return sanitized HTML. Use version zero for the first row and the current version thereafter. A stale value returns `409 conflict`; successful appends return `201`.
+- `GET .../tasks/{task_id}/assessments` is Admin-only and returns complete history newest-first. A Member receives `403 forbidden` even when allowed to see the current assessment.
+
+Every nested identifier is resolved through the trusted project/task/update scope; inaccessible and mismatched identifiers return scoped `404 not_found`. Inactive projects remain readable but reject new comments, suggestion acceptance, and assessments with `409 project_inactive`. Comment creation, first acceptance, and assessment append each commit their audit event in the same PostgreSQL transaction. See `../guides/REVIEW_WORKFLOW.md`.
+
+## Dashboard, task timeline, and complete audit
+
+- `GET /api/v1/dashboard` returns `totals` and one summary per authorized project. Admins see all projects; Members see current memberships only. Facts include active state, task/update/accepted-suggestion counts, latest progress server time, and counts of each task's latest assessment verdict. It deliberately does not label anything “needs progress” while that product rule remains undefined.
+- `GET /api/v1/projects/{project_id}/tasks/{task_id}/timeline` returns the complete oldest-first domain chronology to every authorized task viewer. Events cover task/progress before-and-after revisions, attachment creation/state/downloads, comments, accepted suggestions, and assessment versions. Each event has stable source identity, action, entity, actor, server time, and typed metadata. Markdown metadata includes sanitized HTML; security audit IP/request/user-agent context is excluded. See `../guides/TASK_TIMELINE.md`.
+- `GET /api/v1/admin/audit` is Admin-only and covers the complete append-only security/business audit stream. `limit` defaults to 100 and is bounded to 200. Optional exact filters are `action`, `outcome`, `actor_user_id`, and `target_type`. `cursor` is the opaque `next_cursor` from a prior page; malformed filters/cursors return `422`. Results order newest-first and equal timestamps continue by immutable event UUID.
+
+The existing `GET /api/v1/admin/audit/identity` remains a compatibility view of the newest 200 identity/authentication/account-authorization events. It is not the complete audit contract.
+
 ## `POST /api/v1/setup/bootstrap`
 
 Creates the first Admin only when `BOOTSTRAP_TOKEN` is configured and no user exists. The body contains `bootstrap_token`, normalized `username`, `email`, and `password`. The service validates the guarded secret, username/email, and password, hashes the password with Argon2id, then atomically inserts the Admin and `identity.bootstrap_succeeded` audit row under a transaction-level advisory lock. Concurrent calls can create at most one first user.

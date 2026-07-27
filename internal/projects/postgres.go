@@ -253,9 +253,25 @@ func (r *PostgresRepository) RemoveMember(ctx context.Context, projectID, userID
 		return ErrNotFound
 	}
 	cleared, err := tx.Exec(ctx, `
-		UPDATE public.tasks
-		SET responsible_user_id = NULL, updated_at = clock_timestamp(), version = version + 1
-		WHERE project_id = $1::uuid AND responsible_user_id = $2::uuid`, projectID, userID)
+		WITH affected AS MATERIALIZED (
+			SELECT id,version,name,goals_markdown,description_markdown,responsible_user_id,target_date
+			FROM public.tasks
+			WHERE project_id=$1::uuid AND responsible_user_id=$2::uuid
+			FOR UPDATE
+		), revisions AS (
+			INSERT INTO public.task_revisions(
+				task_id,from_version,to_version,
+				previous_name,previous_goals_markdown,previous_description_markdown,previous_responsible_user_id,previous_target_date,
+				new_name,new_goals_markdown,new_description_markdown,new_responsible_user_id,new_target_date,change_reason,edited_by
+			)
+			SELECT id,version,version+1,name,goals_markdown,description_markdown,responsible_user_id,target_date,
+			       name,goals_markdown,description_markdown,NULL,target_date,'membership_removed',$3::uuid
+			FROM affected
+			RETURNING task_id
+		)
+		UPDATE public.tasks t
+		SET responsible_user_id=NULL,updated_at=clock_timestamp(),version=version+1
+		FROM revisions r WHERE t.id=r.task_id`, projectID, userID, event.ActorUserID)
 	if err != nil {
 		return fmt.Errorf("clear removed Member task responsibility: %w", err)
 	}
