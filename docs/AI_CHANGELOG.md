@@ -1,5 +1,13 @@
 # AI changelog
 
+## 2026-07-27 — Reporting and recovery review fixes deployed
+
+Status: Production rehost verified; database-live/restore verification pending
+
+- Confirmed the follow-up is code-only with no migration, environment, dependency, systemd, Caddy, or rehost-handler change; production remains at seven applied and zero pending migrations.
+- Rehosted current `main` through the guarded source-build handler after Bash parsing, shell lint, formatting, module tidiness, vet, all tests, race detection, OpenAPI validation, and a stripped static build passed.
+- Verified loopback plus public IPv4/IPv6 readiness and the hosted OpenAPI timeline contract with bounded `limit`, opaque `cursor`, and `next_cursor`. The previous production binary remains available for code-only rollback.
+
 ## 2026-07-27 — Reporting and recovery review fixes
 
 Status: Implemented and automated-verified; database-live/restore verification pending
