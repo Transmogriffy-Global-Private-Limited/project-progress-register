@@ -17,6 +17,9 @@ const (
 	defaultReadinessTimeout = 2 * time.Second
 	defaultShutdownTimeout  = 10 * time.Second
 	defaultSessionTTL       = 12 * time.Hour
+	defaultAttachmentRoot   = ".local/attachments"
+	defaultAttachmentBytes  = int64(100 << 20)
+	defaultAttachmentCount  = 10
 )
 
 // Config contains the complete foundation runtime configuration.
@@ -30,6 +33,9 @@ type Config struct {
 	SessionCSRFKey       []byte
 	SessionTTL           time.Duration
 	BootstrapToken       string
+	AttachmentStorageDir string
+	AttachmentMaxBytes   int64
+	AttachmentMaxCount   int
 	ReadinessTimeout     time.Duration
 	ShutdownTimeout      time.Duration
 }
@@ -49,12 +55,15 @@ func LoadWithLookup(lookup LookupEnv) (Config, error) {
 	}
 
 	cfg := Config{
-		AppName:          valueOrDefault(lookup, "APP_NAME", defaultAppName),
-		Environment:      valueOrDefault(lookup, "APP_ENV", defaultEnvironment),
-		HTTPAddress:      valueOrDefault(lookup, "HTTP_ADDR", defaultHTTPAddress),
-		ReadinessTimeout: defaultReadinessTimeout,
-		ShutdownTimeout:  defaultShutdownTimeout,
-		SessionTTL:       defaultSessionTTL,
+		AppName:              valueOrDefault(lookup, "APP_NAME", defaultAppName),
+		Environment:          valueOrDefault(lookup, "APP_ENV", defaultEnvironment),
+		HTTPAddress:          valueOrDefault(lookup, "HTTP_ADDR", defaultHTTPAddress),
+		ReadinessTimeout:     defaultReadinessTimeout,
+		ShutdownTimeout:      defaultShutdownTimeout,
+		SessionTTL:           defaultSessionTTL,
+		AttachmentStorageDir: defaultAttachmentRoot,
+		AttachmentMaxBytes:   defaultAttachmentBytes,
+		AttachmentMaxCount:   defaultAttachmentCount,
 	}
 
 	if !isEnvironment(cfg.Environment) {
@@ -93,6 +102,23 @@ func LoadWithLookup(lookup LookupEnv) (Config, error) {
 			return Config{}, fmt.Errorf("BOOTSTRAP_TOKEN must contain 24 through 256 characters")
 		}
 		cfg.BootstrapToken = raw
+	}
+	if raw, ok := nonEmptyValue(lookup, "ATTACHMENT_STORAGE_DIR"); ok {
+		cfg.AttachmentStorageDir = raw
+	}
+	if raw, ok := nonEmptyValue(lookup, "ATTACHMENT_MAX_FILE_BYTES"); ok {
+		value, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || value < 1<<20 || value > 1<<30 {
+			return Config{}, fmt.Errorf("ATTACHMENT_MAX_FILE_BYTES must be an integer from 1048576 through 1073741824")
+		}
+		cfg.AttachmentMaxBytes = value
+	}
+	if raw, ok := nonEmptyValue(lookup, "ATTACHMENT_MAX_FILES_PER_UPDATE"); ok {
+		value, err := strconv.Atoi(raw)
+		if err != nil || value < 1 || value > 25 {
+			return Config{}, fmt.Errorf("ATTACHMENT_MAX_FILES_PER_UPDATE must be an integer from 1 through 25")
+		}
+		cfg.AttachmentMaxCount = value
 	}
 
 	var err error

@@ -14,6 +14,7 @@ import (
 
 	openapiv1 "github.com/Transmogriffy-Global-Private-Limited/project-progress-register/api/openapi/v1"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/progress"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/projects"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/webui"
 	"github.com/swaggest/swgui/v5emb"
@@ -68,6 +69,11 @@ func ContractRoutes() []Route {
 		{Method: http.MethodPost, Path: ProjectsAPIPath + "/{project_id}/tasks"},
 		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}"},
 		{Method: http.MethodPatch, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates"},
+		{Method: http.MethodPost, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}"},
+		{Method: http.MethodPatch, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}/attachments/{attachment_id}/content"},
 	}
 }
 
@@ -109,15 +115,26 @@ type ProjectAccess interface {
 	UpdateTask(context.Context, identity.User, string, string, projects.UpdateTaskInput, projects.AuditContext) (projects.Task, error)
 }
 
+type ProgressAccess interface {
+	List(context.Context, identity.User, string, string, progress.AuditContext) ([]progress.Update, error)
+	Get(context.Context, identity.User, string, string, string, progress.AuditContext) (progress.Update, error)
+	Create(context.Context, identity.User, string, string, string, progress.CreateMetadata, []progress.UploadFile, progress.AuditContext) (progress.Update, error)
+	Update(context.Context, identity.User, string, string, string, progress.UpdateInput, progress.AuditContext) (progress.Update, error)
+	Download(context.Context, identity.User, string, string, string, string, progress.AuditContext) (progress.Download, error)
+}
+
 // Options contains the explicit dependencies needed by the HTTP transport.
 type Options struct {
-	AppName        string
-	APIDocsEnabled bool
-	Logger         *slog.Logger
-	Readiness      Readiness
-	Identity       Identity
-	Projects       ProjectAccess
-	Production     bool
+	AppName            string
+	APIDocsEnabled     bool
+	Logger             *slog.Logger
+	Readiness          Readiness
+	Identity           Identity
+	Projects           ProjectAccess
+	Progress           ProgressAccess
+	AttachmentMaxBytes int64
+	AttachmentMaxCount int
+	Production         bool
 }
 
 // New constructs the complete foundation HTTP handler.
@@ -125,8 +142,8 @@ func New(options Options) (http.Handler, error) {
 	if strings.TrimSpace(options.AppName) == "" {
 		return nil, fmt.Errorf("application name is required")
 	}
-	if options.Logger == nil || options.Readiness == nil || options.Identity == nil || options.Projects == nil {
-		return nil, fmt.Errorf("logger, readiness checker, identity service, and project service are required")
+	if options.Logger == nil || options.Readiness == nil || options.Identity == nil || options.Projects == nil || options.Progress == nil || options.AttachmentMaxBytes < 1 || options.AttachmentMaxCount < 1 {
+		return nil, fmt.Errorf("logger, readiness, identity, project, progress, and positive attachment limits are required")
 	}
 	templates, err := webui.Templates()
 	if err != nil {

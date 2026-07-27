@@ -48,17 +48,15 @@ Task writes preserve Markdown source only. Sanitized HTML is derived at read/wri
 
 ## Progress updates and revisions
 
-`progress_updates` belongs to one task and owns current Markdown content, immutable author, authoritative server submission time, version, and timestamps.
+`progress_updates` belongs to one task and owns current Markdown content, immutable author, idempotency/request hash, authoritative server submission time, version, timestamps, and one immutable upload-location/geofence snapshot. Location statuses distinguish verified, outside, inaccurate, no-geofence, unavailable, and not-supplied results. Coordinates are required when attachments exist but verification does not gate stored bytes.
 
 `progress_update_revisions` appends one immutable entry for every edit with editor, edited time, previous content, new content, and resulting version. Updates are never silently overwritten.
 
-`update_locations` stores browser-reported coordinates, accuracy, optional browser timestamp, server receipt time, geofence snapshot, computed distance, verification result, and reason. Server computation is authoritative for the result; browser measurements remain operational evidence.
-
 ## Attachments
 
-`update_attachments` links an update to opaque storage identity and records original filename, server-detected MIME, size, SHA-256, uploader, server receipt time, source, storage state, and trust classification.
+`progress_attachments` links an update to opaque storage identity and records original filename, reported and server-detected MIME, media kind, size, SHA-256, uploader, server receipt time, browser-reported source, per-file verification result/reason, and pending/available/failed storage state. Every attachment inherits its update geotag. Only a camera-source image with verified location can be verified; uploads, documents, and videos remain non-verified.
 
-`attachment_metadata` stores extracted EXIF timestamp, GPS, and device/camera details separately as untrusted metadata. Attachment bytes never become publicly addressable durable truth.
+`embedded_metadata` is a JSON object reserved for separately labelled untrusted metadata and is empty when extraction is unsupported. Attachment bytes never become publicly addressable durable truth.
 
 ## Comments and accepted suggestions
 

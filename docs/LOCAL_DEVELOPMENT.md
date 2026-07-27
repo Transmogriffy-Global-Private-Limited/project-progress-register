@@ -23,6 +23,9 @@ $env:DATABASE_URL = 'postgres://<user>:<password>@127.0.0.1:5432/<database>?sslm
 $env:API_DOCS_ENABLED = 'true'
 $env:SESSION_CSRF_KEY = '<standard-base64-encoded-32-random-bytes>'
 $env:BOOTSTRAP_TOKEN = '<one-time-secret-at-least-24-characters>'
+$env:ATTACHMENT_STORAGE_DIR = '.local/attachments'
+$env:ATTACHMENT_MAX_FILE_BYTES = '104857600'
+$env:ATTACHMENT_MAX_FILES_PER_UPDATE = '10'
 ```
 
 Do not paste real credentials into documentation, source files, screenshots, or chat.
@@ -79,6 +82,8 @@ git status --short
 `verify-live-project-access.ps1 -EnvFile .env.local` requires the same fully migrated zero-user disposable database. It creates temporary identities and verifies hidden identifiers before membership, immediate visibility/revocation, two geofence versions, stale-version conflict, persisted history, and project audit. It is authored but must not run until verification resumes and the target data is confirmed disposable.
 
 `verify-live-task-register.ps1 -EnvFile .env.local` creates a disposable Admin and two Members, then verifies scoped task creation/read/update, sanitized Markdown, responsibility without ownership, creator-only Member edits, stale versions, inactive-project rejection, persistence, and audit. It has the same zero-user and explicit-authorization requirement and remains unexecuted.
+
+`verify-live-progress.ps1 -EnvFile .env.local` extends the disposable zero-user flow through a project, geofence, task, camera photo, uploaded document, shared geotag, per-file verified/non-verified classification, immutable revision, authorized download, storage state, and audit. It writes bytes under a unique ignored `.local/progress-live-*` root for inspection. It is authored but must not run unless testing is explicitly resumed and the target is confirmed disposable and fully migrated.
 
 ## Expected readiness states
 

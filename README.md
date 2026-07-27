@@ -16,7 +16,7 @@ The verified foundation and trusted-identity slices provide:
 - an authoritative OpenAPI contract and environment-controlled embedded Swagger UI;
 - PowerShell-native local development and verification commands.
 
-The backend additionally contains account-administration, project-access, and task-register slices: user lifecycle APIs, project/membership/geofence policy, creator-owned tasks, responsibility/dates, derived sanitized Markdown, scoped queries, and audit. Automated, contract, race, build, and loopback smoke verification pass; disposable-database lifecycle verification remains pending. Product frontend work is outside this repository. Progress updates, attachments, comments, suggestions, and assessments remain planned. See `docs/PROJECT_STATE.md` for the exact verification boundary.
+The backend additionally contains account-administration, project-access, task-register, and Step 06 progress/revision/geotag/image-document-video attachment slices with automated verification passing. Database-live lifecycle verification remains pending. Product frontend work is outside this repository. Comments, suggestions, assessments, and dashboards remain planned. See `docs/PROJECT_STATE.md` for the exact verification boundary.
 
 ## Start here
 

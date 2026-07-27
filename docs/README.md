@@ -9,6 +9,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `PERMISSIONS.md` — Admin and Member authorization matrix and enforcement rules.
 - `EVIDENCE_AND_TRUST_MODEL.md` — camera, geolocation, metadata, hashing, and tamper-evidence boundaries.
 - `guides/SAFE_MARKDOWN.md` — Markdown source-of-truth, sanitization, frontend contract, limits, and recovery.
+- `guides/PROGRESS_EVIDENCE.md` — upload geotags, per-file verification, multipart retries, and recovery.
 
 ## Architecture and operations
 
@@ -17,6 +18,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `LOCAL_DEVELOPMENT.md` — native Windows and PowerShell workflow.
 - `contracts/API.md` — human-readable semantics for the implemented HTTP API.
 - `integrations/POSTGRESQL.md` — PostgreSQL ownership, migration, readiness, and failure behavior.
+- `integrations/ATTACHMENT_STORAGE.md` — private byte storage, allowlists, state transitions, reconciliation, and authorized downloads.
 
 ## Planning and repository memory
 
@@ -26,6 +28,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `plans/0003-account-administration.md` — account-lifecycle implementation plan awaiting verification.
 - `plans/0004-project-access.md` — active project, membership, and versioned-geofence implementation plan.
 - `plans/0005-task-register.md` — active task ownership, responsibility, date, and safe-Markdown implementation plan.
+- `plans/0006-progress-updates-and-attachments.md` — active progress, evidence, revision, attachment-storage, and download plan.
 - `PROJECT_STATE.md` — implemented and verified reality.
 - `AI_CHANGELOG.md` — chronological agent-assisted change record.
 

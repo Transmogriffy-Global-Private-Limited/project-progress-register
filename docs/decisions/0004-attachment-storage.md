@@ -1,12 +1,12 @@
 # ADR 0004 — Local filesystem attachment storage
 
-Status: Accepted; implementation planned
+Status: Accepted; Step 06 implementation in progress
 
 Date: 2026-07-27
 
 ## Context
 
-V1 runs on one small VPS and needs original camera images and uploaded files. PostgreSQL should own searchable durable metadata, but storing large file bytes in business tables would increase database and backup burden and obstruct later storage replacement.
+V1 runs on one small VPS and needs camera images plus uploaded images, documents, and videos. PostgreSQL should own searchable durable metadata, but storing large file bytes in business tables would increase database and backup burden and obstruct later storage replacement.
 
 ## Decision
 

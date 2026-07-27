@@ -14,10 +14,12 @@ import (
 
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/config"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/database"
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/filestore"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/health"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/httpserver"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/migrations"
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/progress"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/projects"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/safemarkdown"
 )
@@ -88,14 +90,30 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("create project service: %w", err)
 	}
+	attachmentStore, err := filestore.New(cfg.AttachmentStorageDir, cfg.AttachmentMaxBytes)
+	if err != nil {
+		return fmt.Errorf("create attachment store: %w", err)
+	}
+	progressRepository, err := progress.NewPostgresRepository(pool)
+	if err != nil {
+		return fmt.Errorf("create progress repository: %w", err)
+	}
+	progressService, err := progress.NewService(progressRepository, attachmentStore, markdownRenderer, cfg.AttachmentMaxCount)
+	if err != nil {
+		return fmt.Errorf("create progress service: %w", err)
+	}
+	startAttachmentReconciliation(ctx, logger, progressService)
 	handler, err := httpserver.New(httpserver.Options{
-		AppName:        cfg.AppName,
-		APIDocsEnabled: cfg.APIDocsEnabled,
-		Logger:         logger,
-		Readiness:      readiness,
-		Identity:       identityService,
-		Projects:       projectService,
-		Production:     cfg.Environment == "production",
+		AppName:            cfg.AppName,
+		APIDocsEnabled:     cfg.APIDocsEnabled,
+		Logger:             logger,
+		Readiness:          readiness,
+		Identity:           identityService,
+		Projects:           projectService,
+		Progress:           progressService,
+		AttachmentMaxBytes: cfg.AttachmentMaxBytes,
+		AttachmentMaxCount: cfg.AttachmentMaxCount,
+		Production:         cfg.Environment == "production",
 	})
 	if err != nil {
 		return fmt.Errorf("create HTTP handler: %w", err)
@@ -108,8 +126,8 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	server := &http.Server{
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		ReadTimeout:       10 * time.Minute,
+		WriteTimeout:      10 * time.Minute,
 		IdleTimeout:       60 * time.Second,
 		MaxHeaderBytes:    1 << 20,
 	}
@@ -138,6 +156,25 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		logger.Info("HTTP server stopped")
 		return nil
 	}
+}
+
+type attachmentReconciler interface{ Reconcile(context.Context) error }
+
+func startAttachmentReconciliation(ctx context.Context, logger *slog.Logger, reconciler attachmentReconciler) {
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			if err := reconciler.Reconcile(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				logger.Warn("attachment reconciliation deferred", "error", err)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
 }
 
 func migrate(ctx context.Context, cfg config.Config, command string) error {

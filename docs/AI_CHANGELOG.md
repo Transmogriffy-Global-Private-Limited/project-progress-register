@@ -1,5 +1,34 @@
 # AI changelog
 
+## 2026-07-27 — Progress updates and attachments plan approved
+
+Status: Implemented; automated verification passes, database-live verification pending
+
+Approved direction:
+
+- Implement one larger backend slice for chronological progress updates, immutable revisions, image/document/video attachments, private recoverable filesystem storage, authorized downloads, audit, and frontend-ready contracts.
+- Location presence gates file bytes, while geofence verification does not. Preserve valid browser coordinates for camera and existing-file uploads even when outside, inaccurate, or lacking a configured geofence; text-only updates may record unavailable/not-supplied location.
+- Verification is attachment-specific: only an in-Chrome camera image with server-accepted location becomes verified. Existing images, documents, and videos remain explicitly non-verified while retaining their upload geotag.
+- Use bounded streaming multipart uploads with up to ten 100 MiB files, strict common-format allowlists, opaque storage keys, SHA-256, pending-to-available recovery, and no public filesystem exposure.
+
+Repository memory:
+
+- Added detailed plan `docs/plans/0006-progress-updates-and-attachments.md` and advanced the living plan/current state to Step 06 before implementation.
+
+Authored:
+
+- Added migration `000005` for idempotent progress, immutable revisions, location/geofence snapshots, and attachment metadata/state.
+- Added streaming private filesystem storage with type/size enforcement, opaque keys, SHA-256, atomic finalization, and recovery primitives.
+- Added progress application/persistence flows for scoped chronological reads, authorization before file staging, author/Admin edits, policy-stable evidence, per-file verification, retry-safe pending recovery, downloads, and audit.
+- Added nested multipart/list/detail/update/download HTTP routes, runtime reconciliation, OpenAPI schemas, focused tests, and `verify-live-progress.ps1`.
+- Updated product, evidence, architecture, domain, permission, API, configuration, PostgreSQL, storage integration, operational, plan, state, ADR, and agent documentation.
+
+Verification:
+
+- Fixed the download content-disposition compile error found by focused testing and restricted plain-text detection to `.txt`, `.md`, and `.csv` extensions so unrelated filenames cannot enter through the text allowlist.
+- Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass.
+- Migration application and `verify-live-progress.ps1` remain pending because they require an explicitly disposable, fully migrated database with zero users.
+
 ## 2026-07-27 — Task register and safe Markdown slice
 
 Status: Implemented; automated verification passes, database-live lifecycle verification pending
