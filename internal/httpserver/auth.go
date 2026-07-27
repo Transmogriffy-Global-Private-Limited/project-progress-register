@@ -221,6 +221,16 @@ func writeIdentityError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "bootstrap_unavailable", "Initial setup is unavailable.")
 	case errors.Is(err, identity.ErrBootstrapDenied):
 		writeError(w, http.StatusForbidden, "bootstrap_denied", "Initial setup was denied.")
+	case errors.Is(err, identity.ErrForbidden):
+		writeError(w, http.StatusForbidden, "forbidden", "This operation is not permitted.")
+	case errors.Is(err, identity.ErrPasswordChangeNeeded):
+		writeError(w, http.StatusForbidden, "password_change_required", "Replace the temporary password before continuing.")
+	case errors.Is(err, identity.ErrConflict):
+		writeError(w, http.StatusConflict, "conflict", "The account already exists or changed since it was loaded.")
+	case errors.Is(err, identity.ErrLastAdmin):
+		writeError(w, http.StatusConflict, "last_admin", "The final enabled Admin cannot be disabled or demoted.")
+	case errors.Is(err, identity.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "The requested account was not found.")
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 	}

@@ -36,6 +36,12 @@ Migration transactions prevent partially applied SQL within one file. The adviso
 
 Identity transitions keep each durable fact and its audit event together: bootstrap inserts user plus audit; successful login inserts session, updates last-login state, clears its throttle bucket, and audits; failure updates throttle plus audit; logout revokes plus audits. A transaction rollback prevents half-recorded identity state.
 
+Migration `000002_account_administration.sql` adds forced-password-change state; the existing enabled/role index supports the Admin lock query. Account creation inserts user plus audit. Role/enabled mutation locks all enabled Admin rows, checks optimistic version and the final-Admin invariant, updates the account, revokes sessions, and audits. Reset/change operations update the Argon2id hash, change forced-password state, revoke sessions, and audit in one transaction. Automated verification passes; migrations `000002` through `000004` and their database-live lifecycle scripts remain intentionally unexecuted against retained data.
+
+Migration `000003_project_access.sql` adds projects, temporal project membership, and immutable geofence versions. Partial unique indexes enforce one current membership per Member/project and one current geofence per project. Project mutations and their audit events share transactions; geofence replacement serializes on the project row and preserves every superseded policy. This migration is also authored but intentionally unexecuted during the testing pause.
+
+Migration `000004_task_register.sql` adds creator-owned tasks with Markdown source, optional responsible user/date, optimistic version, byte-size constraints, and project/creator/responsibility indexes. Task writes lock the authorized active project so concurrent membership removal cannot cross the command boundary; task state and audit commit together. The migration is authored but unexecuted during the pause.
+
 ## Local constraints and verification
 
 The application connects outbound to PostgreSQL and does not alter the database listener. Local PostgreSQL must remain loopback-only. Migration commands modify the database named by the environment, so inspect the URL and status before applying.

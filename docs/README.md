@@ -8,6 +8,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `DOMAIN_MODEL.md` — entity ownership, relationships, invariants, and lifecycle.
 - `PERMISSIONS.md` — Admin and Member authorization matrix and enforcement rules.
 - `EVIDENCE_AND_TRUST_MODEL.md` — camera, geolocation, metadata, hashing, and tamper-evidence boundaries.
+- `guides/SAFE_MARKDOWN.md` — Markdown source-of-truth, sanitization, frontend contract, limits, and recovery.
 
 ## Architecture and operations
 
@@ -21,7 +22,10 @@ This index is the entry point to the authoritative Project Progress Register doc
 
 - `DEVELOPMENT_PLAN.md` — canonical living plan and feature registry.
 - `plans/0001-foundation.md` — detailed foundation implementation plan.
-- `plans/0002-trusted-identity.md` — active identity, session, CSRF, throttling, and audit plan.
+- `plans/0002-trusted-identity.md` — verified identity, session, CSRF, throttling, and audit plan.
+- `plans/0003-account-administration.md` — account-lifecycle implementation plan awaiting verification.
+- `plans/0004-project-access.md` — active project, membership, and versioned-geofence implementation plan.
+- `plans/0005-task-register.md` — active task ownership, responsibility, date, and safe-Markdown implementation plan.
 - `PROJECT_STATE.md` — implemented and verified reality.
 - `AI_CHANGELOG.md` — chronological agent-assisted change record.
 
@@ -34,5 +38,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `decisions/0005-server-rendered-ui.md`
 - `decisions/0006-openapi-and-api-documentation.md`
 - `decisions/0007-defer-blockchain.md`
+- `decisions/0008-backend-only-repository.md`
+- `decisions/0009-derived-sanitized-markdown.md`
 
 The authoritative machine-readable API contract is `../api/openapi/v1/openapi.yaml`. It is validated by `scripts/validate-openapi.ps1` and the full verification suite.

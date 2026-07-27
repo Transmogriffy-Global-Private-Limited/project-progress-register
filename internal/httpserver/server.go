@@ -14,20 +14,25 @@ import (
 
 	openapiv1 "github.com/Transmogriffy-Global-Private-Limited/project-progress-register/api/openapi/v1"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/projects"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/webui"
 	"github.com/swaggest/swgui/v5emb"
 )
 
 const (
-	LivenessPath  = "/api/v1/health/live"
-	ReadinessPath = "/api/v1/health/ready"
-	OpenAPIPath   = "/api/openapi/v1/openapi.yaml"
-	APIDocsPath   = "/api/docs/"
-	BootstrapPath = "/api/v1/setup/bootstrap"
-	LoginAPIPath  = "/api/v1/auth/login"
-	SessionPath   = "/api/v1/auth/session"
-	LogoutAPIPath = "/api/v1/auth/logout"
-	SessionCookie = "ppr_session"
+	LivenessPath              = "/api/v1/health/live"
+	ReadinessPath             = "/api/v1/health/ready"
+	OpenAPIPath               = "/api/openapi/v1/openapi.yaml"
+	APIDocsPath               = "/api/docs/"
+	BootstrapPath             = "/api/v1/setup/bootstrap"
+	LoginAPIPath              = "/api/v1/auth/login"
+	SessionPath               = "/api/v1/auth/session"
+	LogoutAPIPath             = "/api/v1/auth/logout"
+	PasswordAPIPath           = "/api/v1/auth/password"
+	AdminUsersAPIPath         = "/api/v1/admin/users"
+	AdminIdentityAuditAPIPath = "/api/v1/admin/audit/identity"
+	ProjectsAPIPath           = "/api/v1/projects"
+	SessionCookie             = "ppr_session"
 )
 
 // Route identifies one externally callable API operation covered by OpenAPI.
@@ -45,6 +50,24 @@ func ContractRoutes() []Route {
 		{Method: http.MethodPost, Path: LoginAPIPath},
 		{Method: http.MethodGet, Path: SessionPath},
 		{Method: http.MethodPost, Path: LogoutAPIPath},
+		{Method: http.MethodPost, Path: PasswordAPIPath},
+		{Method: http.MethodGet, Path: AdminUsersAPIPath},
+		{Method: http.MethodPost, Path: AdminUsersAPIPath},
+		{Method: http.MethodPatch, Path: AdminUsersAPIPath + "/{user_id}"},
+		{Method: http.MethodPost, Path: AdminUsersAPIPath + "/{user_id}/password-reset"},
+		{Method: http.MethodGet, Path: AdminIdentityAuditAPIPath},
+		{Method: http.MethodGet, Path: ProjectsAPIPath},
+		{Method: http.MethodPost, Path: ProjectsAPIPath},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}"},
+		{Method: http.MethodPatch, Path: ProjectsAPIPath + "/{project_id}"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/members"},
+		{Method: http.MethodPut, Path: ProjectsAPIPath + "/{project_id}/members/{user_id}"},
+		{Method: http.MethodDelete, Path: ProjectsAPIPath + "/{project_id}/members/{user_id}"},
+		{Method: http.MethodPut, Path: ProjectsAPIPath + "/{project_id}/geofence"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks"},
+		{Method: http.MethodPost, Path: ProjectsAPIPath + "/{project_id}/tasks"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}"},
+		{Method: http.MethodPatch, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}"},
 	}
 }
 
@@ -62,6 +85,28 @@ type Identity interface {
 	CSRFToken(string) string
 	ValidateCSRF(string, string) error
 	Logout(context.Context, string, identity.User, identity.AuditContext) error
+	ListUsers(context.Context, identity.User, identity.AuditContext) ([]identity.User, error)
+	CreateUser(context.Context, identity.User, identity.CreateUserInput, identity.AuditContext) (identity.CredentialResult, error)
+	UpdateUser(context.Context, identity.User, string, identity.UpdateUserInput, identity.AuditContext) (identity.User, error)
+	ResetPassword(context.Context, identity.User, string, identity.AuditContext) (identity.CredentialResult, error)
+	ChangePassword(context.Context, identity.User, identity.ChangePasswordInput, identity.AuditContext) error
+	ListIdentityAudit(context.Context, identity.User, identity.AuditContext) ([]identity.AuditRecord, error)
+}
+
+// ProjectAccess is the project authorization and policy boundary used by HTTP.
+type ProjectAccess interface {
+	ListProjects(context.Context, identity.User, projects.AuditContext) ([]projects.Project, error)
+	GetProject(context.Context, identity.User, string, projects.AuditContext) (projects.Project, error)
+	CreateProject(context.Context, identity.User, projects.CreateProjectInput, projects.AuditContext) (projects.Project, error)
+	UpdateProject(context.Context, identity.User, string, projects.UpdateProjectInput, projects.AuditContext) (projects.Project, error)
+	ListMembers(context.Context, identity.User, string, projects.AuditContext) ([]projects.Member, error)
+	AddMember(context.Context, identity.User, string, string, projects.AuditContext) (projects.Member, error)
+	RemoveMember(context.Context, identity.User, string, string, projects.AuditContext) error
+	ReplaceGeofence(context.Context, identity.User, string, projects.ReplaceGeofenceInput, projects.AuditContext) (projects.Geofence, error)
+	ListTasks(context.Context, identity.User, string, projects.AuditContext) ([]projects.Task, error)
+	GetTask(context.Context, identity.User, string, string, projects.AuditContext) (projects.Task, error)
+	CreateTask(context.Context, identity.User, string, projects.CreateTaskInput, projects.AuditContext) (projects.Task, error)
+	UpdateTask(context.Context, identity.User, string, string, projects.UpdateTaskInput, projects.AuditContext) (projects.Task, error)
 }
 
 // Options contains the explicit dependencies needed by the HTTP transport.
@@ -71,6 +116,7 @@ type Options struct {
 	Logger         *slog.Logger
 	Readiness      Readiness
 	Identity       Identity
+	Projects       ProjectAccess
 	Production     bool
 }
 
@@ -79,8 +125,8 @@ func New(options Options) (http.Handler, error) {
 	if strings.TrimSpace(options.AppName) == "" {
 		return nil, fmt.Errorf("application name is required")
 	}
-	if options.Logger == nil || options.Readiness == nil || options.Identity == nil {
-		return nil, fmt.Errorf("logger, readiness checker, and identity service are required")
+	if options.Logger == nil || options.Readiness == nil || options.Identity == nil || options.Projects == nil {
+		return nil, fmt.Errorf("logger, readiness checker, identity service, and project service are required")
 	}
 	templates, err := webui.Templates()
 	if err != nil {
@@ -107,6 +153,16 @@ func New(options Options) (http.Handler, error) {
 	mux.HandleFunc(LoginAPIPath, method(http.MethodPost, loginAPIHandler(options)))
 	mux.HandleFunc(SessionPath, method(http.MethodGet, sessionAPIHandler(options)))
 	mux.HandleFunc(LogoutAPIPath, method(http.MethodPost, logoutAPIHandler(options)))
+	mux.HandleFunc(PasswordAPIPath, method(http.MethodPost, passwordAPIHandler(options)))
+	mux.HandleFunc(AdminUsersAPIPath, methodSwitch(map[string]http.HandlerFunc{
+		http.MethodGet: adminListUsersAPIHandler(options), http.MethodPost: adminCreateUserAPIHandler(options),
+	}))
+	mux.HandleFunc(AdminUsersAPIPath+"/", adminUserAPIRouter(options))
+	mux.HandleFunc(AdminIdentityAuditAPIPath, method(http.MethodGet, adminIdentityAuditAPIHandler(options)))
+	mux.HandleFunc(ProjectsAPIPath, methodSwitch(map[string]http.HandlerFunc{
+		http.MethodGet: listProjectsAPIHandler(options), http.MethodPost: createProjectAPIHandler(options),
+	}))
+	mux.HandleFunc(ProjectsAPIPath+"/", projectAPIRouter(options))
 
 	if options.APIDocsEnabled {
 		mux.HandleFunc(OpenAPIPath, method(http.MethodGet, openAPIHandler))
@@ -134,6 +190,10 @@ func homeHandler(templates *template.Template, options Options) http.HandlerFunc
 		token, session, ok := authenticate(r, options)
 		if !ok {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		if session.User.MustChangePassword {
+			http.Error(w, "Password change required", http.StatusForbidden)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

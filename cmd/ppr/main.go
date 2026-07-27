@@ -18,6 +18,8 @@ import (
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/httpserver"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/migrations"
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/projects"
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/safemarkdown"
 )
 
 func main() {
@@ -77,12 +79,22 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("create identity service: %w", err)
 	}
+	markdownRenderer := safemarkdown.New()
+	projectRepository, err := projects.NewPostgresRepository(pool)
+	if err != nil {
+		return fmt.Errorf("create project repository: %w", err)
+	}
+	projectService, err := projects.NewService(projectRepository, markdownRenderer)
+	if err != nil {
+		return fmt.Errorf("create project service: %w", err)
+	}
 	handler, err := httpserver.New(httpserver.Options{
 		AppName:        cfg.AppName,
 		APIDocsEnabled: cfg.APIDocsEnabled,
 		Logger:         logger,
 		Readiness:      readiness,
 		Identity:       identityService,
+		Projects:       projectService,
 		Production:     cfg.Environment == "production",
 	})
 	if err != nil {

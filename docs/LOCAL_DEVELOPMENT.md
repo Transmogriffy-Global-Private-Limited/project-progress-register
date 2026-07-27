@@ -74,6 +74,12 @@ git status --short
 
 `verify-live-identity.ps1 -EnvFile .env.local` is intentionally manual. It requires a migrated database with zero users and creates one temporary Admin, session, throttle row, and authentication audit history while checking the complete identity flow. Use it only when those writes and the resulting reset requirement are explicitly approved. It generates bootstrap, password, and CSRF values in memory and never prints them.
 
+`verify-live-account-admin.ps1 -EnvFile .env.local` is the corresponding destructive disposable-database verifier for the complete account lifecycle. It requires zero users and checks forced password replacement, Admin denial, reset/session revocation, promotion, safe demotion, and the final-enabled-Admin guard. It remains unexecuted because the configured database contains retained identity-verification data; do not bypass its zero-user guard.
+
+`verify-live-project-access.ps1 -EnvFile .env.local` requires the same fully migrated zero-user disposable database. It creates temporary identities and verifies hidden identifiers before membership, immediate visibility/revocation, two geofence versions, stale-version conflict, persisted history, and project audit. It is authored but must not run until verification resumes and the target data is confirmed disposable.
+
+`verify-live-task-register.ps1 -EnvFile .env.local` creates a disposable Admin and two Members, then verifies scoped task creation/read/update, sanitized Markdown, responsibility without ownership, creator-only Member edits, stale versions, inactive-project rejection, persistence, and audit. It has the same zero-user and explicit-authorization requirement and remains unexecuted.
+
 ## Expected readiness states
 
 - Liveness returns `200` whenever the process can serve HTTP.

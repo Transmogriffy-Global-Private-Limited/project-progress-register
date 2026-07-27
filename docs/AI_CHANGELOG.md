@@ -1,5 +1,78 @@
 # AI changelog
 
+## 2026-07-27 — Task register and safe Markdown slice
+
+Status: Implemented; automated verification passes, database-live lifecycle verification pending
+
+Approved scope:
+
+- One larger backend-only slice for project-scoped tasks, immutable creator ownership, optional responsibility/date, safe Markdown, optimistic updates, transactional audit, REST/OpenAPI, tests, scripts, and documentation.
+
+Authored:
+
+- Added migration `000004` for creator-owned tasks, Markdown source, optional responsible user/date, versions, constraints, and indexes.
+- Extended the projects aggregate with active-project/current-membership command locking, Admin-or-creator edit policy, responsible-Member validation, scoped reads, conflicts, and task audit.
+- Added Goldmark and Bluemonday as focused Go dependencies; source Markdown remains durable truth and allowlist-sanitized HTML is derived for project/task responses.
+- Added task list/create/detail/update routes, OpenAPI schemas/semantics, route coverage, domain/HTTP/sanitizer tests, and `verify-live-task-register.ps1` without execution.
+- Added the safe-Markdown guide and ADR 0009, and synchronized architecture, domain, permissions, API, PostgreSQL, state, plan, operations, and repository instructions.
+- Completed a read-only affected-surface and stale-wording scan; no remaining task-is-planned claims were found in current authoritative documentation.
+
+Verification:
+
+- Dependency integrity, formatting, vet, all Go tests, focused sanitizer/domain/HTTP coverage, OpenAPI validation/route coverage, build, race detection, `git diff --check`, and both loopback documentation-toggle smoke modes pass.
+- Migrations and guarded database-live lifecycle scripts were not executed because the configured database is not the required disposable zero-user target.
+
+## 2026-07-27 — Project access and geofence policy slice
+
+Status: Implemented; automated verification passes, database-live lifecycle verification pending
+
+Approved scope:
+
+- One larger backend-only slice for project lifecycle, temporal Member access, versioned geofence policy, scoped queries, Admin commands, transactional audit, JSON/OpenAPI, tests, scripts, and documentation.
+- Continue authoring verification coverage without executing tests, builds, migrations, contract validation, smoke checks, race checks, or live scripts.
+
+Authored:
+
+- Added migration `000003` with projects, historical membership rows, immutable geofence versions, database range constraints, and partial unique indexes for current state.
+- Added the `projects` module with application validation, Admin policy, Member-scoped reads, optimistic project/geofence conflicts, membership eligibility, transactional state changes, and audit.
+- Added project list/create/detail/update, membership list/add/remove, and geofence replacement APIs with authentication, CSRF, strict paths/payloads, error mapping, and complete OpenAPI schemas.
+- Added domain and HTTP test coverage plus `scripts/verify-live-project-access.ps1` without executing them.
+- Updated the architecture, domain, permissions, API, PostgreSQL, local-development, planning, state, and repository-agent documentation.
+
+Verification:
+
+- Vet, all Go tests, OpenAPI validation/route coverage, build, race detection, `git diff --check`, and loopback smoke checks pass across the combined worktree. The guarded project database-live verifier remains pending.
+
+## 2026-07-27 — Account administration slice
+
+Status: Implemented; automated verification passes, database-live lifecycle verification pending
+
+Approved scope:
+
+- One larger backend vertical slice for Admin user inventory, creation, enable/disable, roles, password reset, forced temporary-password replacement, session revocation, final-enabled-Admin safety, audit query, JSON/OpenAPI, tests, scripts, and documentation.
+- Continue writing verification assets but do not execute tests, builds, migrations, smoke checks, or live verification until the human resumes testing.
+- Keep changes local and uncommitted because repository commit policy requires completed verification.
+
+Non-goals:
+
+- Email, external identity providers, MFA, username/email rename, project permissions, deployment, or database reset.
+
+Authored:
+
+- Added migration `000002` for `must_change_password`; the existing enabled/role index supports the Admin guard query.
+- Added Admin-authorized list/create/update/reset services, generated temporary passwords, self-service password replacement, optimistic version checks, atomic session revocation, final-enabled-Admin locking, and new audit actions.
+- Added backend user inventory, lifecycle, one-time credential, forced-password, and recent identity-audit JSON routes.
+- Expanded the User contract and OpenAPI with Admin operations, forced-change state, one-time credential semantics, conflicts, CSRF, and side effects.
+- Added service/HTTP tests and `scripts/verify-live-account-admin.ps1` without executing them.
+
+Verification:
+
+- Formatting, vet, all Go tests, OpenAPI validation/route coverage, build, race detection, `git diff --check`, and loopback smoke checks pass across the combined worktree. The guarded account database-live verifier remains pending.
+
+Scope correction:
+
+- The human clarified that this repository is backend-only. Removed the newly authored account-management HTML routes/templates/styles, retained only APIs/contracts, superseded ADR 0005 with ADR 0008 for future work, and updated repository invariants and plans.
+
 ## 2026-07-27 — Trusted identity slice
 
 Status: Verified

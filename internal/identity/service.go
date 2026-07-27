@@ -27,6 +27,12 @@ type Repository interface {
 	LookupSession(context.Context, []byte, time.Time) (Session, error)
 	RevokeSession(context.Context, []byte, AuditEvent) error
 	AppendAudit(context.Context, AuditEvent) error
+	ListUsers(context.Context) ([]User, error)
+	CreateUser(context.Context, NewUser, AuditEvent) (User, error)
+	UpdateUser(context.Context, string, UpdateUserInput, AuditEvent) (User, error)
+	ResetPassword(context.Context, string, string, AuditEvent) (User, error)
+	ChangePassword(context.Context, string, string, AuditEvent) error
+	ListIdentityAudit(context.Context, int) ([]AuditRecord, error)
 }
 
 // UserRecord includes the password verifier needed only inside authentication.
@@ -225,6 +231,153 @@ func (s *Service) Logout(ctx context.Context, sessionToken string, user User, au
 		return fmt.Errorf("revoke session: %w", err)
 	}
 	return nil
+}
+
+// ListUsers returns the complete small internal account inventory to Admins.
+func (s *Service) ListUsers(ctx context.Context, actor User, audit AuditContext) ([]User, error) {
+	if err := s.requireAdmin(ctx, actor, audit); err != nil {
+		return nil, err
+	}
+	users, err := s.repository.ListUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	return users, nil
+}
+
+// ListIdentityAudit returns the newest bounded identity security history to Admins.
+func (s *Service) ListIdentityAudit(ctx context.Context, actor User, audit AuditContext) ([]AuditRecord, error) {
+	if err := s.requireAdmin(ctx, actor, audit); err != nil {
+		return nil, err
+	}
+	records, err := s.repository.ListIdentityAudit(ctx, 200)
+	if err != nil {
+		return nil, fmt.Errorf("list identity audit: %w", err)
+	}
+	return records, nil
+}
+
+// CreateUser creates an account with a generated temporary password shown once.
+func (s *Service) CreateUser(ctx context.Context, actor User, input CreateUserInput, audit AuditContext) (CredentialResult, error) {
+	if err := s.requireAdmin(ctx, actor, audit); err != nil {
+		return CredentialResult{}, err
+	}
+	username, err := validateUsername(input.Username)
+	if err != nil {
+		return CredentialResult{}, err
+	}
+	email, err := validateEmail(input.Email)
+	if err != nil {
+		return CredentialResult{}, err
+	}
+	role, err := validateRole(input.Role)
+	if err != nil {
+		return CredentialResult{}, err
+	}
+	temporaryPassword, err := newTemporaryPassword()
+	if err != nil {
+		return CredentialResult{}, err
+	}
+	passwordHash, err := s.passwords.Hash(ctx, temporaryPassword)
+	if err != nil {
+		return CredentialResult{}, fmt.Errorf("hash temporary password: %w", err)
+	}
+	user, err := s.repository.CreateUser(ctx, NewUser{
+		Username: username, Email: email, PasswordHash: passwordHash, Role: role,
+		CreatedBy: actor.ID, MustChangePassword: true,
+	}, AuditEvent{ActorUserID: actor.ID, Action: "identity.user_created", TargetType: "user", Outcome: "succeeded", Context: cleanAuditContext(audit), Details: map[string]any{"role": role}})
+	if err != nil {
+		if errors.Is(err, ErrConflict) {
+			return CredentialResult{}, ErrConflict
+		}
+		return CredentialResult{}, fmt.Errorf("create user: %w", err)
+	}
+	return CredentialResult{User: user, TemporaryPassword: temporaryPassword}, nil
+}
+
+// UpdateUser changes role or enabled state and protects the final enabled Admin.
+func (s *Service) UpdateUser(ctx context.Context, actor User, targetID string, input UpdateUserInput, audit AuditContext) (User, error) {
+	if err := s.requireAdmin(ctx, actor, audit); err != nil {
+		return User{}, err
+	}
+	if strings.TrimSpace(targetID) == "" {
+		return User{}, ErrNotFound
+	}
+	role, err := validateRole(input.Role)
+	if err != nil {
+		return User{}, err
+	}
+	if input.Enabled == nil {
+		return User{}, &ValidationError{Field: "enabled", Message: "is required"}
+	}
+	if input.ExpectedVersion < 1 {
+		return User{}, &ValidationError{Field: "expected_version", Message: "must be a positive integer"}
+	}
+	user, err := s.repository.UpdateUser(ctx, targetID, UpdateUserInput{Role: role, Enabled: input.Enabled, ExpectedVersion: input.ExpectedVersion}, AuditEvent{
+		ActorUserID: actor.ID, Action: "identity.user_updated", TargetType: "user", TargetID: targetID, Outcome: "succeeded", Context: cleanAuditContext(audit), Details: map[string]any{"role": role, "enabled": *input.Enabled},
+	})
+	if err != nil {
+		if errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) || errors.Is(err, ErrLastAdmin) {
+			return User{}, err
+		}
+		return User{}, fmt.Errorf("update user: %w", err)
+	}
+	return user, nil
+}
+
+// ResetPassword generates a one-time temporary password and revokes all sessions.
+func (s *Service) ResetPassword(ctx context.Context, actor User, targetID string, audit AuditContext) (CredentialResult, error) {
+	if err := s.requireAdmin(ctx, actor, audit); err != nil {
+		return CredentialResult{}, err
+	}
+	temporaryPassword, err := newTemporaryPassword()
+	if err != nil {
+		return CredentialResult{}, err
+	}
+	passwordHash, err := s.passwords.Hash(ctx, temporaryPassword)
+	if err != nil {
+		return CredentialResult{}, fmt.Errorf("hash reset password: %w", err)
+	}
+	user, err := s.repository.ResetPassword(ctx, targetID, passwordHash, AuditEvent{ActorUserID: actor.ID, Action: "identity.password_reset", TargetType: "user", TargetID: targetID, Outcome: "succeeded", Context: cleanAuditContext(audit)})
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return CredentialResult{}, ErrNotFound
+		}
+		return CredentialResult{}, fmt.Errorf("reset password: %w", err)
+	}
+	return CredentialResult{User: user, TemporaryPassword: temporaryPassword}, nil
+}
+
+// ChangePassword replaces the current password and revokes every current session.
+func (s *Service) ChangePassword(ctx context.Context, actor User, input ChangePasswordInput, audit AuditContext) error {
+	if !actor.Enabled || actor.ID == "" {
+		return ErrUnauthenticated
+	}
+	if err := validatePassword(input.Password); err != nil {
+		return err
+	}
+	passwordHash, err := s.passwords.Hash(ctx, input.Password)
+	if err != nil {
+		return fmt.Errorf("hash changed password: %w", err)
+	}
+	if err := s.repository.ChangePassword(ctx, actor.ID, passwordHash, AuditEvent{ActorUserID: actor.ID, Action: "identity.password_changed", TargetType: "user", TargetID: actor.ID, Outcome: "succeeded", Context: cleanAuditContext(audit)}); err != nil {
+		return fmt.Errorf("change password: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) requireAdmin(ctx context.Context, actor User, audit AuditContext) error {
+	if actor.Enabled && actor.Role == RoleAdmin && !actor.MustChangePassword {
+		return nil
+	}
+	event := AuditEvent{ActorUserID: actor.ID, Action: "authorization.admin_users_denied", TargetType: "user", Outcome: "denied", Context: cleanAuditContext(audit), Details: map[string]any{"reason": "admin_required"}}
+	if err := s.repository.AppendAudit(ctx, event); err != nil {
+		return fmt.Errorf("audit denied Admin operation: %w", err)
+	}
+	if actor.MustChangePassword {
+		return ErrPasswordChangeNeeded
+	}
+	return ErrForbidden
 }
 
 func (s *Service) recordFailure(ctx context.Context, digest []byte, audit AuditContext, reason string) error {

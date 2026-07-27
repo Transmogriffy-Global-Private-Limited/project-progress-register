@@ -1,6 +1,6 @@
 # Permissions
 
-Status: Admin/Member roles and enabled-account session enforcement are implemented; project and account-management authorization arrives with those features.
+Status: Identity enforcement is live-verified. Account-management, project-access, and task enforcement pass automated service/HTTP/race verification; database-live lifecycle verification remains pending.
 
 Authorization is enforced in backend application services and project-scoped persistence queries. Templates may hide unavailable actions for usability but are never an authorization boundary.
 
@@ -36,6 +36,14 @@ Authorization is enforced in backend application services and project-scoped per
 - Only an Admin may change roles, membership, geofences, suggestions, or assessments.
 - The final enabled Admin cannot be disabled or demoted.
 - Every privileged state change and material denied attempt specified by the audit policy records an audit event without secrets.
+- Only an enabled Admin whose temporary password has been replaced may list, create, role-change, enable/disable, or reset users.
+- Every authenticated user may replace their own password; doing so revokes all of their sessions.
+- Project list/detail queries derive Member scope from current membership in PostgreSQL and return `404` for inaccessible identifiers.
+- Only enabled Member-role accounts can receive project membership; Admin access is global and is never represented by membership rows.
+- Inactive projects remain readable to authorized users for history but are not deleted or silently hidden.
+- Admins or current project Members may create tasks only in active projects; creator identity is the authenticated actor and cannot change.
+- Admins may edit any task. Members may edit only their own task while they retain current project membership.
+- Responsible assignment requires a current enabled project Member but grants neither project access nor edit ownership. Membership removal atomically clears that user's task responsibilities.
 
 ## Open decision
 

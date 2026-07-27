@@ -25,6 +25,10 @@ var (
 	ErrBootstrapDenied      = errors.New("bootstrap denied")
 	ErrCSRFInvalid          = errors.New("invalid CSRF token")
 	ErrNotFound             = errors.New("not found")
+	ErrForbidden            = errors.New("forbidden")
+	ErrConflict             = errors.New("conflict")
+	ErrLastAdmin            = errors.New("final enabled Admin")
+	ErrPasswordChangeNeeded = errors.New("password change required")
 )
 
 var usernamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{2,31}$`)
@@ -41,12 +45,15 @@ func (e *ValidationError) Error() string {
 
 // User is the authenticated account projection used outside persistence.
 type User struct {
-	ID        string    `json:"id"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	Role      string    `json:"role"`
-	Enabled   bool      `json:"enabled"`
-	CreatedAt time.Time `json:"created_at"`
+	ID                 string    `json:"id"`
+	Username           string    `json:"username"`
+	Email              string    `json:"email"`
+	Role               string    `json:"role"`
+	Enabled            bool      `json:"enabled"`
+	MustChangePassword bool      `json:"must_change_password"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	Version            int64     `json:"version"`
 }
 
 // Session is a current authenticated session and user projection.
@@ -74,6 +81,22 @@ type AuditEvent struct {
 	Details     map[string]any
 }
 
+// AuditRecord is the immutable identity-audit projection shown to Admins.
+type AuditRecord struct {
+	ID            string         `json:"id"`
+	ActorUserID   string         `json:"actor_user_id,omitempty"`
+	ActorUsername string         `json:"actor_username,omitempty"`
+	Action        string         `json:"action"`
+	TargetType    string         `json:"target_type"`
+	TargetID      string         `json:"target_id,omitempty"`
+	Outcome       string         `json:"outcome"`
+	OccurredAt    time.Time      `json:"occurred_at"`
+	RequestID     string         `json:"request_id"`
+	ClientIP      string         `json:"client_ip"`
+	UserAgent     string         `json:"user_agent"`
+	Details       map[string]any `json:"details"`
+}
+
 // BootstrapInput creates the one and only initial Admin.
 type BootstrapInput struct {
 	BootstrapToken string `json:"bootstrap_token"`
@@ -98,10 +121,45 @@ type LoginResult struct {
 
 // NewUser is the already validated, hashed persistence input.
 type NewUser struct {
-	Username     string
-	Email        string
-	PasswordHash string
-	Role         string
+	Username           string
+	Email              string
+	PasswordHash       string
+	Role               string
+	CreatedBy          string
+	MustChangePassword bool
+}
+
+// CreateUserInput is the Admin account-creation contract.
+type CreateUserInput struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+}
+
+// UpdateUserInput changes role or enabled state with optimistic concurrency.
+type UpdateUserInput struct {
+	Role            string `json:"role"`
+	Enabled         *bool  `json:"enabled"`
+	ExpectedVersion int64  `json:"expected_version"`
+}
+
+// ChangePasswordInput replaces the authenticated user's password.
+type ChangePasswordInput struct {
+	Password string `json:"password"`
+}
+
+// CredentialResult contains a generated credential only in the immediate response.
+type CredentialResult struct {
+	User              User   `json:"user"`
+	TemporaryPassword string `json:"temporary_password"`
+}
+
+func validateRole(value string) (string, error) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value != RoleAdmin && value != RoleMember {
+		return "", &ValidationError{Field: "role", Message: "must be admin or member"}
+	}
+	return value, nil
 }
 
 func normalizeIdentifier(value string) string {

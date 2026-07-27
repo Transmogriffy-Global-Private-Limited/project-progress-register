@@ -1,6 +1,6 @@
 # ADR 0005 — Server-rendered mobile-first UI
 
-Status: Accepted
+Status: Superseded by ADR 0008 for future feature work; existing minimal shell retained
 
 Date: 2026-07-27
 
