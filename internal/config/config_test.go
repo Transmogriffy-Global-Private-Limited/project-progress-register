@@ -29,6 +29,9 @@ func TestLoadWithLookupDefaults(t *testing.T) {
 	if cfg.SessionTTL != 12*time.Hour {
 		t.Fatalf("SessionTTL = %s", cfg.SessionTTL)
 	}
+	if cfg.AttachmentStorageDir != ".local/attachments" || cfg.AttachmentMaxBytes != 100<<20 || cfg.AttachmentMaxCount != 10 {
+		t.Fatalf("unexpected attachment defaults: %#v", cfg)
+	}
 }
 
 func TestLoadWithLookupRejectsUnsafeAddress(t *testing.T) {
@@ -54,23 +57,29 @@ func TestLoadWithLookupAcceptsExplicitValues(t *testing.T) {
 	t.Parallel()
 
 	cfg, err := LoadWithLookup(mapLookup(map[string]string{
-		"APP_NAME":               "Internal Register",
-		"APP_ENV":                "production",
-		"HTTP_ADDR":              "[::1]:9080",
-		"DATABASE_URL":           "postgres://runtime.invalid/ppr",
-		"MIGRATION_DATABASE_URL": "postgres://migration.invalid/ppr",
-		"API_DOCS_ENABLED":       "true",
-		"SESSION_CSRF_KEY":       "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-		"SESSION_TTL":            "24h",
-		"BOOTSTRAP_TOKEN":        "this-is-a-long-bootstrap-token",
-		"READINESS_TIMEOUT":      "3s",
-		"SHUTDOWN_TIMEOUT":       "15s",
+		"APP_NAME":                        "Internal Register",
+		"APP_ENV":                         "production",
+		"HTTP_ADDR":                       "[::1]:9080",
+		"DATABASE_URL":                    "postgres://runtime.invalid/ppr",
+		"MIGRATION_DATABASE_URL":          "postgres://migration.invalid/ppr",
+		"API_DOCS_ENABLED":                "true",
+		"SESSION_CSRF_KEY":                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+		"SESSION_TTL":                     "24h",
+		"BOOTSTRAP_TOKEN":                 "this-is-a-long-bootstrap-token",
+		"READINESS_TIMEOUT":               "3s",
+		"SHUTDOWN_TIMEOUT":                "15s",
+		"ATTACHMENT_STORAGE_DIR":          "D:/private/ppr-attachments",
+		"ATTACHMENT_MAX_FILE_BYTES":       "209715200",
+		"ATTACHMENT_MAX_FILES_PER_UPDATE": "20",
 	}))
 	if err != nil {
 		t.Fatalf("LoadWithLookup() error = %v", err)
 	}
 	if !cfg.APIDocsEnabled || cfg.Environment != "production" || cfg.ReadinessTimeout != 3*time.Second || cfg.SessionTTL != 24*time.Hour || len(cfg.SessionCSRFKey) != 32 {
 		t.Fatalf("unexpected config: %#v", cfg)
+	}
+	if cfg.AttachmentMaxBytes != 200<<20 || cfg.AttachmentMaxCount != 20 {
+		t.Fatalf("unexpected attachment config: %#v", cfg)
 	}
 }
 

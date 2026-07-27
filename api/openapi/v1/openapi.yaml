@@ -20,6 +20,8 @@ tags:
     description: Project lifecycle, scoped visibility, membership, and versioned site policy.
   - name: Tasks
     description: Project-scoped task register, immutable ownership, responsibility, dates, and safe Markdown.
+  - name: Progress
+    description: Chronological progress, immutable revisions, geotag evidence, private attachments, and authorized downloads.
 paths:
   /api/v1/setup/bootstrap:
     post:
@@ -415,6 +417,127 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates:
+    get:
+      tags: [Progress]
+      operationId: listTaskProgressUpdates
+      summary: List current progress entries chronologically
+      description: Current project access is required. Returns current content, evidence, and attachment metadata; use detail for revision history.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+      responses:
+        '200':
+          description: Oldest-first task diary entries.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProgressUpdatesResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [Progress]
+      operationId: createTaskProgressUpdate
+      summary: Create progress and optionally attach geotagged files
+      description: >-
+        Requires an active authorized project and an Idempotency-Key. The metadata JSON and files are ordered: one attachment descriptor per repeated files part.
+        Every file requires reported coordinates. Geofence failure never rejects bytes. Only a camera-source image whose location passes server evaluation becomes verified;
+        uploaded images, documents, and videos remain non-verified while retaining the upload geotag.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [metadata]
+              properties:
+                metadata: {$ref: '#/components/schemas/CreateProgressMetadata'}
+                files:
+                  type: array
+                  maxItems: 25
+                  description: Runtime-configured limit; default 10 and never above 25.
+                  items: {type: string, format: binary}
+            encoding:
+              metadata: {contentType: application/json}
+      responses:
+        '201':
+          description: Created update, or the identical result of an idempotent retry.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProgressUpdateResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/RequestTooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '503': {$ref: '#/components/responses/AttachmentPending'}
+  /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates/{update_id}:
+    get:
+      tags: [Progress]
+      operationId: getTaskProgressUpdate
+      summary: Get progress, evidence, attachments, and revision history
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/UpdateID'}
+      responses:
+        '200': {description: Complete progress detail., content: {application/json: {schema: {$ref: '#/components/schemas/ProgressUpdateResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Progress]
+      operationId: updateTaskProgress
+      summary: Replace current written progress and append a revision
+      description: Members may edit only their own update; Admins may edit any. Evidence and attachments are immutable. Requires an active project and expected version.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/UpdateID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateProgressRequest'}}}
+      responses:
+        '200': {description: Updated current entry with appended immutable revision., content: {application/json: {schema: {$ref: '#/components/schemas/ProgressUpdateResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates/{update_id}/attachments/{attachment_id}/content:
+    get:
+      tags: [Progress]
+      operationId: downloadProgressAttachment
+      summary: Download one available attachment through current project authorization
+      description: Streams immutable bytes with attachment disposition, the server-detected MIME, private no-store caching, and nosniff. Storage paths are never exposed.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/UpdateID'}
+        - {$ref: '#/components/parameters/AttachmentID'}
+      responses:
+        '200':
+          description: Authorized attachment bytes.
+          headers:
+            Content-Disposition: {schema: {type: string}, description: Safe attachment filename disposition.}
+            X-Content-Type-Options: {schema: {type: string, const: nosniff}}
+          content: {application/octet-stream: {schema: {type: string, format: binary}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '410': {$ref: '#/components/responses/AttachmentUnavailable'}
+        '503': {$ref: '#/components/responses/AttachmentPending'}
   /api/v1/health/live:
     get:
       tags: [Health]
@@ -478,6 +601,22 @@ components:
       name: task_id
       required: true
       schema: {type: string, format: uuid}
+    UpdateID:
+      in: path
+      name: update_id
+      required: true
+      schema: {type: string, format: uuid}
+    AttachmentID:
+      in: path
+      name: attachment_id
+      required: true
+      schema: {type: string, format: uuid}
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema: {type: string, minLength: 16, maxLength: 128}
+      description: Caller-generated retry key. Reuse is accepted only for the byte-identical metadata and file-hash request.
   securitySchemes:
     cookieSession:
       type: apiKey
@@ -503,8 +642,14 @@ components:
     ValidationFailed:
       description: An input field failed validation.
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    InvalidRequest:
+      description: Multipart framing or metadata JSON is invalid.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    RequestTooLarge:
+      description: The multipart request exceeds the configured bounded upload limit.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     UnsupportedMediaType:
-      description: Content-Type must be application/json.
+      description: Content-Type does not match the operation contract (normally application/json or multipart/form-data).
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     Forbidden:
       description: The authenticated account lacks the required role or must replace its temporary password.
@@ -514,6 +659,12 @@ components:
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
     NotFound:
       description: The requested resource does not exist or is outside the caller's authorized scope.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    AttachmentPending:
+      description: Metadata committed but staged bytes have not yet completed recoverable finalization. Retry with the same idempotency key or wait for reconciliation.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    AttachmentUnavailable:
+      description: Metadata remains, but reconciliation determined that the immutable bytes are unavailable.
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
   schemas:
     BootstrapRequest:
@@ -764,6 +915,152 @@ components:
       additionalProperties: false
       required: [tasks]
       properties: {tasks: {type: array, items: {$ref: '#/components/schemas/Task'}}}
+    ReportedLocation:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude, accuracy_metres]
+      properties:
+        latitude: {type: number, format: double, minimum: -90, maximum: 90, description: Browser-reported and not hardware-attested.}
+        longitude: {type: number, format: double, minimum: -180, maximum: 180, description: Browser-reported and not hardware-attested.}
+        accuracy_metres: {type: number, format: double, minimum: 0.1, maximum: 100000, description: Browser-reported radius.}
+        browser_observed_at:
+          oneOf: [{type: string, format: date-time}, {type: 'null'}]
+    AttachmentDescriptor:
+      type: object
+      additionalProperties: false
+      required: [source]
+      properties:
+        source: {type: string, enum: [camera, upload], description: Browser-reported flow. Camera is allowed only for images and is not hardware attestation.}
+        browser_last_modified_at:
+          oneOf: [{type: string, format: date-time}, {type: 'null'}]
+    CreateProgressMetadata:
+      type: object
+      additionalProperties: false
+      required: [content_markdown, attachments]
+      properties:
+        content_markdown: {type: string, minLength: 1, maxLength: 50000, description: Non-whitespace Markdown; maximum is UTF-8 bytes.}
+        location:
+          oneOf: [{$ref: '#/components/schemas/ReportedLocation'}, {type: 'null'}]
+          description: Required and non-null when files are present.
+        location_unavailable_reason:
+          oneOf: [{type: string, enum: [permission_denied, timeout, unavailable, not_supported]}, {type: 'null'}]
+          description: Mutually exclusive with location; text-only submissions may use it.
+        attachments:
+          type: array
+          maxItems: 25
+          items: {$ref: '#/components/schemas/AttachmentDescriptor'}
+          description: Ordered one-to-one with repeated files parts; runtime-configured limit defaults to 10 and never exceeds 25.
+    UpdateProgressRequest:
+      type: object
+      additionalProperties: false
+      required: [content_markdown, expected_version]
+      properties:
+        content_markdown: {type: string, minLength: 1, maxLength: 50000}
+        expected_version: {type: integer, format: int64, minimum: 1}
+    ProgressActor:
+      type: object
+      additionalProperties: false
+      required: [user_id, username]
+      properties:
+        user_id: {type: string, format: uuid}
+        username: {type: string}
+    EvidenceGeofence:
+      type: object
+      additionalProperties: false
+      required: [id, version, latitude, longitude, radius_metres, max_accuracy_metres]
+      properties:
+        id: {type: string, format: uuid}
+        version: {type: integer, format: int64, minimum: 1}
+        latitude: {type: number, format: double}
+        longitude: {type: number, format: double}
+        radius_metres: {type: number, format: double}
+        max_accuracy_metres: {type: number, format: double}
+    ProgressEvidence:
+      type: object
+      additionalProperties: false
+      required: [location_status, location_reason, reported_location, location_unavailable_reason, geofence, computed_distance_metres]
+      properties:
+        location_status: {type: string, enum: [verified, unverified_outside, unverified_accuracy, unverified_no_geofence, unverified_unavailable, not_supplied]}
+        location_reason: {type: string}
+        reported_location:
+          oneOf: [{$ref: '#/components/schemas/ReportedLocation'}, {type: 'null'}]
+        location_unavailable_reason:
+          oneOf: [{type: string, enum: [permission_denied, timeout, unavailable, not_supported]}, {type: 'null'}]
+        geofence:
+          oneOf: [{$ref: '#/components/schemas/EvidenceGeofence'}, {type: 'null'}]
+          description: Immutable server-selected policy snapshot at submission time.
+        computed_distance_metres:
+          oneOf: [{type: number, format: double}, {type: 'null'}]
+    ProgressAttachment:
+      type: object
+      additionalProperties: false
+      required: [id, original_name, reported_mime, detected_mime, media_kind, source, source_trust, verification_status, verification_reason, size_bytes, sha256, browser_last_modified_at, embedded_metadata, embedded_metadata_trust, storage_state, failure_reason, content_path, created_at, available_at]
+      properties:
+        id: {type: string, format: uuid}
+        original_name: {type: string, maxLength: 255}
+        reported_mime: {type: string, description: Untrusted browser declaration.}
+        detected_mime: {type: string, description: Server-detected allowlisted type used for download.}
+        media_kind: {type: string, enum: [image, document, video]}
+        source: {type: string, enum: [camera, upload]}
+        source_trust: {type: string, const: browser_reported}
+        verification_status: {type: string, enum: [verified, non_verified]}
+        verification_reason: {type: string}
+        size_bytes: {type: integer, format: int64, minimum: 1, maximum: 1073741824}
+        sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+        browser_last_modified_at:
+          oneOf: [{type: string, format: date-time}, {type: 'null'}]
+        embedded_metadata: {type: object, additionalProperties: true, description: Reserved untrusted embedded metadata map; empty when not extracted.}
+        embedded_metadata_trust: {type: string, const: untrusted}
+        storage_state: {type: string, enum: [pending, available, failed]}
+        failure_reason: {type: string, description: Empty unless recovery determines staged bytes are unavailable; never contains a filesystem path.}
+        content_path: {type: string, description: Authorized same-origin download path; never a filesystem path.}
+        created_at: {type: string, format: date-time}
+        available_at:
+          oneOf: [{type: string, format: date-time}, {type: 'null'}]
+    ProgressRevision:
+      type: object
+      additionalProperties: false
+      required: [id, from_version, to_version, previous_content_markdown, previous_content_html, new_content_markdown, new_content_html, edited_by, edited_at]
+      properties:
+        id: {type: string, format: uuid}
+        from_version: {type: integer, format: int64, minimum: 1}
+        to_version: {type: integer, format: int64, minimum: 2}
+        previous_content_markdown: {type: string}
+        previous_content_html: {type: string, readOnly: true}
+        new_content_markdown: {type: string}
+        new_content_html: {type: string, readOnly: true}
+        edited_by: {$ref: '#/components/schemas/ProgressActor'}
+        edited_at: {type: string, format: date-time}
+    ProgressUpdate:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, task_id, content_markdown, content_html, created_by, evidence, attachments, revisions, created_at, updated_at, version]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        task_id: {type: string, format: uuid}
+        content_markdown: {type: string}
+        content_html: {type: string, readOnly: true, description: Allowlist-sanitized HTML derived from content_markdown.}
+        created_by: {$ref: '#/components/schemas/ProgressActor'}
+        evidence: {$ref: '#/components/schemas/ProgressEvidence'}
+        attachments:
+          type: array
+          description: Every attachment inherits this update's immutable evidence.reported_location upload geotag; verification_status remains per attachment.
+          items: {$ref: '#/components/schemas/ProgressAttachment'}
+        revisions: {type: array, items: {$ref: '#/components/schemas/ProgressRevision'}, description: Empty in list responses and complete in detail/mutation responses.}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        version: {type: integer, format: int64, minimum: 1}
+    ProgressUpdateResponse:
+      type: object
+      additionalProperties: false
+      required: [progress_update]
+      properties: {progress_update: {$ref: '#/components/schemas/ProgressUpdate'}}
+    ProgressUpdatesResponse:
+      type: object
+      additionalProperties: false
+      required: [progress_updates]
+      properties: {progress_updates: {type: array, items: {$ref: '#/components/schemas/ProgressUpdate'}}}
     IdentityAuditRecord:
       type: object
       additionalProperties: false

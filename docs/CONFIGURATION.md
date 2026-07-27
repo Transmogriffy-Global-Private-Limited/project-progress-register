@@ -13,6 +13,9 @@ Configuration is read from process environment when `ppr` starts. The applicatio
 | `SESSION_CSRF_KEY` | Standard Base64 of exactly 32 bytes | None | Required for `serve`; not migrations | Yes | HMAC key for deriving session-bound CSRF tokens. Changing it invalidates outstanding CSRF tokens and requires restart, but does not revoke sessions. |
 | `SESSION_TTL` | Go duration from `15m` through `168h` | `12h` | No | No | Absolute lifetime of each newly created session and cookie. |
 | `BOOTSTRAP_TOKEN` | 24–256 non-whitespace-trimmed characters | None | No | Yes | Enables one-time first-Admin setup only while no users exist. Remove after bootstrap and restart. Never stored or logged. |
+| `ATTACHMENT_STORAGE_DIR` | Non-empty filesystem path | `.local/attachments` | No | No | Private attachment byte root. Relative paths resolve from process working directory. Must not be publicly served. |
+| `ATTACHMENT_MAX_FILE_BYTES` | Integer 1048576–1073741824 | `104857600` | No | No | Streaming per-file byte limit; multipart total is bounded from this and the count limit. |
+| `ATTACHMENT_MAX_FILES_PER_UPDATE` | Integer 1–25 | `10` | No | No | Maximum repeated file parts and attachment descriptors in one progress creation. |
 | `READINESS_TIMEOUT` | Go duration from `100ms` through `30s` | `2s` | No | No | Total bound for PostgreSQL ping plus migration-current verification. |
 | `SHUTDOWN_TIMEOUT` | Go duration from `1s` through `1m` | `10s` | No | No | Graceful HTTP request-drain deadline after termination signal. |
 

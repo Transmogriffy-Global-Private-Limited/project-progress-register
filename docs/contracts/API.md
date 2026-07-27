@@ -60,6 +60,20 @@ Responsibility requires a current enabled Member in the same project and returns
 
 Markdown source fields are authoritative. Project `description_html` and task `goals_html`/`description_html` are read-only Goldmark-plus-Bluemonday projections. Clients must never inject source Markdown as HTML. See `../guides/SAFE_MARKDOWN.md`.
 
+## Progress, geotags, revisions, and attachments
+
+- `GET /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates` returns current entries oldest-first with evidence and attachment metadata. `revisions` is empty in list responses.
+- `POST /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates` requires authentication, CSRF, an active authorized project, `Idempotency-Key`, and `multipart/form-data`. The `metadata` JSON part contains Markdown, optional location/unavailable reason, and an ordered attachment descriptor for every repeated `files` part.
+- `GET /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates/{update_id}` returns complete current content, immutable evidence, attachments, and all before/after revisions.
+- `PATCH` on the same path replaces current Markdown using `expected_version`; Admins may edit any update, while Members must be immutable author and retain project access. Evidence and attachments cannot be edited.
+- `GET .../attachments/{attachment_id}/content` streams only an available file after resolving every parent identifier through current project authorization.
+
+File bytes require `metadata.location` with finite latitude/longitude and positive accuracy. Outside-geofence, inaccurate, and no-geofence results are accepted and stored. Only an attachment with `media_kind=image`, browser-reported `source=camera`, and location status `verified` receives attachment `verification_status=verified`. Existing images, documents, and videos remain `non_verified` while retaining that geotag. See `../guides/PROGRESS_EVIDENCE.md`.
+
+Each file is streamed, bounded, allowlisted by detected bytes, SHA-256 hashed, and stored through pending-to-available recovery. Responses expose `content_path`, never a storage key. Pending recovery returns `503 attachment_pending`; irrecoverably missing bytes return `410 attachment_unavailable`. The client retries a pending create using the same idempotency key. Reusing a key with different metadata or file hashes returns `409`.
+
+Successful downloads set attachment disposition, detected MIME, `private, no-store`, and `nosniff`. Audit records progress creation/edit, attachment availability, download intent, and scoped denial without storing Markdown, file bytes, geolocation, or filesystem paths in audit details.
+
 ## `POST /api/v1/setup/bootstrap`
 
 Creates the first Admin only when `BOOTSTRAP_TOKEN` is configured and no user exists. The body contains `bootstrap_token`, normalized `username`, `email`, and `password`. The service validates the guarded secret, username/email, and password, hashes the password with Argon2id, then atomically inserts the Admin and `identity.bootstrap_succeeded` audit row under a transaction-level advisory lock. Concurrent calls can create at most one first user.

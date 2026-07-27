@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/progress"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/projects"
 )
 
@@ -88,6 +89,8 @@ func TestAPIRoutesRejectOtherMethods(t *testing.T) {
 		requestPath := strings.ReplaceAll(path, "{user_id}", "22222222-2222-4222-8222-222222222222")
 		requestPath = strings.ReplaceAll(requestPath, "{project_id}", "11111111-1111-4111-8111-111111111111")
 		requestPath = strings.ReplaceAll(requestPath, "{task_id}", "44444444-4444-4444-8444-444444444444")
+		requestPath = strings.ReplaceAll(requestPath, "{update_id}", "55555555-5555-4555-8555-555555555555")
+		requestPath = strings.ReplaceAll(requestPath, "{attachment_id}", "66666666-6666-4666-8666-666666666666")
 		handler.ServeHTTP(response, httptest.NewRequest(http.MethodOptions, requestPath, nil))
 		if response.Code != http.StatusMethodNotAllowed {
 			t.Fatalf("OPTIONS %s response = %d", path, response.Code)
@@ -103,12 +106,15 @@ func TestAPIRoutesRejectOtherMethods(t *testing.T) {
 func testHandler(t *testing.T, docsEnabled bool, readinessError error) http.Handler {
 	t.Helper()
 	handler, err := New(Options{
-		AppName:        "Project Progress Register",
-		APIDocsEnabled: docsEnabled,
-		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Readiness:      staticReadiness{err: readinessError},
-		Identity:       fakeIdentity{},
-		Projects:       fakeProjects{},
+		AppName:            "Project Progress Register",
+		APIDocsEnabled:     docsEnabled,
+		Logger:             slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Readiness:          staticReadiness{err: readinessError},
+		Identity:           fakeIdentity{},
+		Projects:           fakeProjects{},
+		Progress:           fakeProgress{},
+		AttachmentMaxBytes: 100 << 20,
+		AttachmentMaxCount: 10,
 	})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -119,6 +125,23 @@ func testHandler(t *testing.T, docsEnabled bool, readinessError error) http.Hand
 type fakeIdentity struct{ currentUser *identity.User }
 
 type fakeProjects struct{}
+type fakeProgress struct{}
+
+func (fakeProgress) List(context.Context, identity.User, string, string, progress.AuditContext) ([]progress.Update, error) {
+	return []progress.Update{}, nil
+}
+func (fakeProgress) Get(_ context.Context, _ identity.User, projectID, taskID, updateID string, _ progress.AuditContext) (progress.Update, error) {
+	return progress.Update{ID: updateID, ProjectID: projectID, TaskID: taskID, ContentMarkdown: "Progress", ContentHTML: "<p>Progress</p>", Version: 1, Attachments: []progress.Attachment{}, Revisions: []progress.Revision{}}, nil
+}
+func (fakeProgress) Create(_ context.Context, actor identity.User, projectID, taskID, _ string, metadata progress.CreateMetadata, _ []progress.UploadFile, _ progress.AuditContext) (progress.Update, error) {
+	return progress.Update{ID: "55555555-5555-4555-8555-555555555555", ProjectID: projectID, TaskID: taskID, ContentMarkdown: metadata.ContentMarkdown, CreatedBy: progress.Actor{UserID: actor.ID, Username: actor.Username}, Version: 1, Attachments: []progress.Attachment{}, Revisions: []progress.Revision{}}, nil
+}
+func (fakeProgress) Update(_ context.Context, _ identity.User, projectID, taskID, updateID string, input progress.UpdateInput, _ progress.AuditContext) (progress.Update, error) {
+	return progress.Update{ID: updateID, ProjectID: projectID, TaskID: taskID, ContentMarkdown: input.ContentMarkdown, Version: input.ExpectedVersion + 1, Attachments: []progress.Attachment{}, Revisions: []progress.Revision{}}, nil
+}
+func (fakeProgress) Download(context.Context, identity.User, string, string, string, string, progress.AuditContext) (progress.Download, error) {
+	return progress.Download{}, progress.ErrNotFound
+}
 
 func (fakeProjects) ListProjects(context.Context, identity.User, projects.AuditContext) ([]projects.Project, error) {
 	return []projects.Project{{ID: "11111111-1111-4111-8111-111111111111", Name: "Site Alpha", Active: true, Version: 1}}, nil
@@ -307,7 +330,7 @@ func TestJSONContentTypeAndBrowserOriginChecks(t *testing.T) {
 
 func TestProductionCookieAndTrustedClientIP(t *testing.T) {
 	t.Parallel()
-	handler, err := New(Options{AppName: "Project Progress Register", Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Readiness: staticReadiness{}, Identity: fakeIdentity{}, Projects: fakeProjects{}, Production: true})
+	handler, err := New(Options{AppName: "Project Progress Register", Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Readiness: staticReadiness{}, Identity: fakeIdentity{}, Projects: fakeProjects{}, Progress: fakeProgress{}, AttachmentMaxBytes: 100 << 20, AttachmentMaxCount: 10, Production: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,7 +432,7 @@ func TestAccountAdministrationRequiresCSRF(t *testing.T) {
 func TestForcedPasswordChangeBlocksHome(t *testing.T) {
 	t.Parallel()
 	forced := identity.User{ID: "00000000-0000-0000-0000-000000000002", Username: "member", Role: identity.RoleMember, Enabled: true, MustChangePassword: true, Version: 1}
-	handler, err := New(Options{AppName: "Project Progress Register", Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Readiness: staticReadiness{}, Identity: fakeIdentity{currentUser: &forced}, Projects: fakeProjects{}})
+	handler, err := New(Options{AppName: "Project Progress Register", Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Readiness: staticReadiness{}, Identity: fakeIdentity{currentUser: &forced}, Projects: fakeProjects{}, Progress: fakeProgress{}, AttachmentMaxBytes: 100 << 20, AttachmentMaxCount: 10})
 	if err != nil {
 		t.Fatal(err)
 	}

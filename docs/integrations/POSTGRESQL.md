@@ -42,6 +42,8 @@ Migration `000003_project_access.sql` adds projects, temporal project membership
 
 Migration `000004_task_register.sql` adds creator-owned tasks with Markdown source, optional responsible user/date, optimistic version, byte-size constraints, and project/creator/responsibility indexes. Task writes lock the authorized active project so concurrent membership removal cannot cross the command boundary; task state and audit commit together. The migration is authored but unexecuted during the pause.
 
+Migration `000005_progress_updates_and_attachments.sql` adds current progress entries, immutable before/after revisions, upload-location/geofence snapshots, idempotency hashes, and attachment metadata/state. Progress creation locks the authorized task/project boundary, confirms the evaluated geofence is still current, commits pending metadata plus progress audit, then filesystem finalization is marked available in a second audited transaction. Revision insertion, current-content update, version increment, and audit share one transaction. The migration is authored but unexecuted while testing is paused.
+
 ## Local constraints and verification
 
 The application connects outbound to PostgreSQL and does not alter the database listener. Local PostgreSQL must remain loopback-only. Migration commands modify the database named by the environment, so inspect the URL and status before applying.

@@ -1,6 +1,6 @@
 # Permissions
 
-Status: Identity enforcement is live-verified. Account-management, project-access, and task enforcement pass automated service/HTTP/race verification; database-live lifecycle verification remains pending.
+Status: Identity enforcement is live-verified. Account/project/task/progress/attachment enforcement passes automated verification; database-live verification remains pending for the later slices.
 
 Authorization is enforced in backend application services and project-scoped persistence queries. Templates may hide unavailable actions for usability but are never an authorization boundary.
 
@@ -20,7 +20,7 @@ Authorization is enforced in backend application services and project-scoped per
 | Set task assessment | Yes | No |
 | View current assessment/suggestions | Yes | Yes, with current project access |
 | View assessment history | Yes | No |
-| View update revision history | Yes | Own current update history only unless later approved otherwise |
+| View update revision history | Yes | Yes, with current project access |
 | View/download project attachment | Yes | Yes, with current project access and project policy |
 | View untrusted EXIF separately | Yes | No by default |
 | View full audit trail | Yes | No |
@@ -44,7 +44,7 @@ Authorization is enforced in backend application services and project-scoped per
 - Admins or current project Members may create tasks only in active projects; creator identity is the authenticated actor and cannot change.
 - Admins may edit any task. Members may edit only their own task while they retain current project membership.
 - Responsible assignment requires a current enabled project Member but grants neither project access nor edit ownership. Membership removal atomically clears that user's task responsibilities.
-
-## Open decision
-
-Whether Members may inspect revision history for updates created by other project members remains a non-blocking product decision. The conservative default exposes current content to all project members and full revision history to Admins plus the update author.
+- Admins and current project Members may add progress to active-project tasks. Members edit only updates they authored; Admins edit any. Every edit appends an immutable revision.
+- Current project access permits reading all task progress, revisions, attachment metadata, and available bytes. Authorship controls mutation, not read visibility.
+- Every file requires reported upload coordinates. Geofence failure never grants verification and never denies accepted bytes; only a camera-source image with a server-verified location is labelled verified.
+- Attachment identifiers are resolved through project, task, and progress scope. Original names and opaque storage keys never grant access.

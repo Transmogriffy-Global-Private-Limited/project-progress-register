@@ -1,6 +1,6 @@
 # Development plan
 
-Status: Approved product direction; account, project, and task slices implemented with automated verification passing and database-live verification pending
+Status: Approved product direction; account, project, task, and progress slices implemented with automated verification passing and database-live verification pending
 
 ## Project objective
 
@@ -103,13 +103,17 @@ Detailed plan: `plans/0005-task-register.md`.
 
 ### Feature: Verified progress updates and attachments
 
-Status: Approved
+Status: Implemented
 
 Phase: 6
 
 Depends on: tasks and geofences.
 
 Objective: Deliver the central mobile camera/location submission, immutable revision history, recoverable file storage, metadata trust labels, and chronological task register.
+
+Scope: one larger backend slice covering non-blocking location evidence, immutable progress revisions, mixed image/document/video attachments, private recoverable storage, authorized downloads, audit, REST/OpenAPI, tests, scripts, and documentation.
+
+Detailed plan: `plans/0006-progress-updates-and-attachments.md`.
 
 ### Feature: Comments and accepted suggestions
 
@@ -143,15 +147,15 @@ Objective: Complete useful dashboard query contracts, full Admin audit access, b
 
 ## Current execution
 
-Current phase: Task register
+Current phase: Verified progress
 
-Active feature: Tasks and safe Markdown
+Active feature: Progress updates, revisions, evidence, and attachments
 
-Current implementation slice: Step 05 implemented and automated verification complete — database-live lifecycle verification pending
+Current implementation slice: Step 06 implemented with automated verification passing; database-live lifecycle verification pending
 
-Last completed slice: Step 04 — project access and geofence policy implemented with automated verification passing
+Last completed slice: Step 06 — progress updates, revisions, upload geotags, per-file verification, private attachments, and recovery
 
-Next expected slice: Verified progress updates and attachments
+Next expected slice: Comments and accepted suggestions
 
 Blocked by: Database-live verification requires an explicitly disposable, fully migrated database with zero users
 
@@ -159,20 +163,23 @@ Blocked by: Database-live verification requires an explicitly disposable, fully 
 
 1. Run the guarded account, project, and task lifecycle verifiers only on an explicitly disposable, fully migrated database with zero users.
 2. Reset the explicitly disposable verification database before real use and configure persistent production security values.
-3. Implement verified progress updates and attachments as the next larger backend slice if coding continues before verification resumes.
+3. Run the guarded Step 06 database-live verifier only after that disposable zero-user precondition is satisfied.
+4. Implement comments, accepted suggestions, and Admin assessments as the next larger backend slice.
 
 ## Risks and unresolved decisions
 
-- Define the exact dashboard meaning of “needs progress update” before implementing it.
-- Confirm attachment allowlist, per-file limit, per-update limit, and retention/backup targets before the upload slice.
+- Define the exact dashboard meaning of “needs progress update” before the reporting slice.
+- Define production retention and coordinated database/filesystem backup targets before operational handoff.
 - Email delivery remains deferred; account creation and reset use generated temporary credentials displayed exactly once and require replacement after login.
-- Confirm the Member visibility policy for other authors’ update revision history.
+- Members with current project access may read other authors' progress revision history; responsibility and creator ownership affect mutation, not project read visibility.
 - Confirm display timezone policy; storage remains UTC.
 - A live migration integration test needs an explicitly disposable database workflow; existing databases are never assumed disposable.
 
 ## Verification strategy
 
 Every slice normally runs formatting, focused tests, package tests, `go vet`, build, contract validation, relevant loopback integration checks, residue scan, full verification, `git diff --check`, and `git status --short`. Those checks pass for Steps 03–05, including race detection and both API-documentation toggle smoke modes. Database-modifying verification uses only an explicitly configured disposable test database; the guarded account/project/task lifecycle scripts remain pending because the configured database is not empty.
+
+For Step 06, focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. Migration application and the guarded database-live verifier remain pending because the configured database does not satisfy the required disposable zero-user precondition.
 
 ## V1 completion criteria
 

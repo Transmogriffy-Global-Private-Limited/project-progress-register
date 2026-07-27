@@ -2,7 +2,7 @@
 
 ## System boundary
 
-Project Progress Register is one Go modular-monolith process behind Caddy and one PostgreSQL database. Caddy owns public TLS and proxies to a loopback-only application listener. Attachment bytes will live in a configurable non-public local filesystem root; PostgreSQL owns attachment metadata and all durable business state.
+Project Progress Register is one Go modular-monolith process behind Caddy and one PostgreSQL database. Caddy owns public TLS and proxies to a loopback-only application listener. Attachment bytes live in a configurable non-public local filesystem root; PostgreSQL owns attachment metadata and all durable business state.
 
 There is no multi-tenancy, Redis, event broker, microservice, SPA framework, container runtime, or production Node.js process in v1.
 
@@ -16,8 +16,9 @@ Browser
       -> identity application service
       -> project access application service
           -> stateless safe Markdown renderer
+      -> progress application service
+          -> private attachment storage
       -> PostgreSQL pool
-      -> local attachment storage (future evidence slice)
 ```
 
 The current foundation contains one `ppr` binary with explicit `serve`, `migrate up`, and `migrate status` commands.
@@ -32,11 +33,13 @@ The current foundation contains one `ppr` binary with explicit `serve`, `migrate
 - `internal/httpserver` — HTTP routing, transport behavior, security headers, logging, and error containment.
 - `internal/identity` — account validation, Argon2id password policy, bootstrap, login throttling, opaque sessions, CSRF, audit orchestration, and PostgreSQL identity queries.
 - `internal/projects` — project lifecycle, temporal membership, geofence versions, task ownership/responsibility, scoped PostgreSQL queries, and audit orchestration.
+- `internal/progress` — progress updates, immutable revisions, upload-location policy, per-attachment verification, authorized downloads, and storage reconciliation.
+- `internal/filestore` — private staged/final attachment bytes, detected-type allowlisting, SHA-256 hashing, and atomic finalization.
 - `internal/safemarkdown` — Goldmark parsing and Bluemonday allowlist sanitization for derived HTML response fields.
 - `internal/webui` — trusted templates and static assets.
 - `api/openapi/v1` — authoritative version-one OpenAPI document and embedded schema bytes.
 
-Future domain packages will be added only with the vertical slice that uses them. Transport handlers may parse and present data but must not own authorization or business decisions. Application services will own orchestration; domain code will own invariants; PostgreSQL will enforce durable constraints.
+New domain packages are added only with the vertical slice that uses them. Transport handlers may parse and present data but must not own authorization or business decisions. Application services own orchestration; domain code owns invariants; PostgreSQL enforces durable constraints.
 
 ## Startup and shutdown
 
@@ -46,8 +49,9 @@ Future domain packages will be added only with the vertical slice that uses them
 load and validate environment
 -> create a lazy PostgreSQL pool
 -> load embedded migration metadata
--> construct bounded readiness and PostgreSQL identity/project repositories
--> construct identity policy, shared Markdown renderer, and project/task policy
+-> construct bounded readiness and PostgreSQL identity/project/progress repositories
+-> construct identity policy, shared Markdown renderer, project/task policy, private filestore, and progress policy
+-> start non-blocking attachment reconciliation
 -> parse templates and register routes
 -> bind the validated loopback address
 -> serve until SIGINT or SIGTERM
@@ -99,9 +103,11 @@ Migration orchestration remains a small project-owned component because the requ
 - Project edits use project versions. Geofence replacement locks the project, compares the current geofence version, closes it, and inserts the next immutable policy in one transaction. PostgreSQL numeric constraints protect the accepted coordinate and distance ranges without PostGIS.
 - Tasks live inside the project aggregate. PostgreSQL project locks keep membership stable during task operations; Admins may edit any task while Members require both current access and immutable creator ownership. Responsibility is display/work assignment only and never grants access or ownership.
 - Markdown source is durable truth. Goldmark output passes through Bluemonday before the API returns read-only HTML fields; raw client HTML is never trusted or persisted as rendered truth.
+- The progress module owns task diary entries, immutable revisions, upload-location snapshots, attachment verification labels, and authorized download decisions. It reads project/task/membership/geofence state through scoped PostgreSQL queries but never writes project-owned tables.
+- The filestore module streams allowlisted bytes to a private staging root, calculates SHA-256, and atomically finalizes opaque keys. PostgreSQL attachment state remains authoritative; immediate-and-minute reconciliation recovers pending finalization without blocking process liveness.
 - Future authorization is centralized in application services and reinforced by project-scoped queries and database constraints.
 - Browser evidence remains explicitly non-cryptographic; see `EVIDENCE_AND_TRUST_MODEL.md`.
 
 ## Recovery model
 
-The process is stateless apart from PostgreSQL and the future attachment root. Restart reconstructs configuration, pools, identity/project/task policy, the Markdown renderer, compatibility templates, routes, and migration expectations. PostgreSQL preserves accounts, hashed sessions, throttles, projects, access history, geofence versions, task source content, and append-only audit events. Expired or revoked sessions stop authenticating immediately; derived HTML is recreated from stored Markdown and retention cleanup is intentionally deferred.
+The process is stateless apart from PostgreSQL and the private attachment root. Restart reconstructs configuration, pools, identity/project/task/progress policy, storage, the Markdown renderer, compatibility templates, routes, and migration expectations. PostgreSQL preserves accounts, hashed sessions, throttles, projects, access history, geofence versions, task/progress source content, revisions, attachment state, and append-only audit events. A background loop immediately reconciles pending attachment rows and retries each minute; database unavailability postpones reconciliation while liveness remains available. Expired or revoked sessions stop authenticating immediately; derived HTML is recreated from stored Markdown and retention cleanup is intentionally deferred.

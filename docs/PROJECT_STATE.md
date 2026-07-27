@@ -35,8 +35,8 @@ The live verifier left one temporary Admin, one revoked session, one throttle ro
 ## Not implemented
 
 - Full cross-domain audit viewer; the account slice authors a bounded identity-only viewer.
-- Progress updates, revisions, attachments, comments, suggestions, assessments, or dashboard queries.
-- Deployment, Caddy configuration, production database roles, backup/restore automation, or attachment storage.
+- Comments, suggestions, assessments, or dashboard queries.
+- Deployment, Caddy configuration, production database roles, or backup/restore automation.
 
 ## Implemented; database-live verification pending
 
@@ -50,6 +50,12 @@ Formatting, module tidiness, vet, all Go tests, focused sanitizer/domain/HTTP co
 
 Migrations `000002` through `000004` have not been applied to the configured database, and the guarded account/project/task lifecycle scripts have not been run. They require an explicitly disposable, fully migrated database with zero users; the retained identity-verification database is not eligible. No database was modified during this verification run.
 
+## Step 06 implemented; database-live verification pending
+
+The local `anubhab-work` tree contains migration `000005`, chronological progress list/create/detail/update, immutable before/after revisions, shared upload-location/geofence snapshots, per-file verified/non-verified classification, image/document/video allowlists, SHA-256, private staging/final storage, pending reconciliation, authorized downloads, idempotent multipart creation, OpenAPI, tests, documentation, and `verify-live-progress.ps1`.
+
+Every file requires browser-reported coordinates. Only a camera-source image whose coordinates pass current accuracy/geofence policy is verified; existing images, documents, and videos remain non-verified but keep their geotag. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. Migration `000005` and `verify-live-progress.ps1` have not run because they require an explicitly disposable, fully migrated zero-user database.
+
 ## Next slice
 
-Publish the reviewed Steps 03–05 changes through `anubhab-work` and merge them into `main`. Run database-live lifecycle verification later on an explicitly disposable zero-user database. Verified progress updates and attachments remain the next approved larger backend slice.
+Use `verify-live-progress.ps1` only on an explicitly disposable fully migrated zero-user database. Comments, accepted suggestions, and Admin assessments are the next larger backend slice.

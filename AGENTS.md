@@ -63,6 +63,8 @@ Run from PowerShell 7+ at the repository root:
 
 `scripts/verify-live-task-register.ps1` extends the zero-user disposable workflow through safe Markdown, task ownership, responsibility, optimistic updates, and inactive-project enforcement. It must never run automatically or against retained data.
 
+`scripts/verify-live-progress.ps1` extends the same zero-user boundary through geotagged image/document uploads, per-file verification, revisions, private storage, downloads, and audit. It must never run automatically or against retained data.
+
 Use `.\scripts\run-local.ps1` for loopback-only local serving and `.\scripts\migrate.ps1` for migration status or application.
 
 Every meaningful slice ends with focused verification, a residue scan, full verification, `git diff --check`, and `git status --short`.
