@@ -86,7 +86,7 @@ Production API documentation defaults to disabled: in that state, `/backend/api/
 
 ## Rehost handler
 
-The installed `/usr/local/bin/rehost-ppr-service` is sourced from `scripts/rehost-ppr.sh`. `~/.bash_aliases` exposes the thin interactive handler `rehost-ppr`. It delegates the guarded service cycle to the host's shared `rehost-service`, then waits up to 30 seconds for database readiness before reporting success.
+The installed `/usr/local/bin/rehost-ppr-service` is sourced from `scripts/rehost-ppr.sh`. `~/.bash_aliases` exposes the thin interactive handler `rehost-ppr`. From the default `/root/project-progress-register` source tree, it runs all Go tests, builds a static binary, atomically installs it at `/opt/ppr/bin/ppr`, delegates the guarded service cycle to the host's shared `rehost-service`, and waits up to 30 seconds for database readiness before reporting success.
 
 ```bash
 # Default 70-second delay, then follow logs.
@@ -94,9 +94,14 @@ rehost-ppr
 
 # Immediate verified cycle without following logs.
 rehost-ppr -t 0 --no-tail
+
+# Build from another verified PPR checkout.
+rehost-ppr --source-dir /absolute/path/to/project-progress-register
 ```
 
-`--no-reload` skips `systemctl daemon-reload`. The handler does not build, migrate, alter Caddy, or change environment files; prepare those surfaces separately before rehosting.
+`PPR_SOURCE_DIR` provides the same source override for automation. `--no-reload` skips `systemctl daemon-reload`. The handler retains the prior binary at `/opt/ppr/bin/ppr.previous` and automatically restores it if restart or readiness fails. Build or test failure leaves the running service unchanged.
+
+The handler deliberately does not run database migrations, alter Caddy, or change environment files. Review and apply pending migrations explicitly before rehosting code that requires them; otherwise readiness fails and the handler rolls the binary back.
 
 ## First Admin and bootstrap removal
 

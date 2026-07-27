@@ -1,5 +1,13 @@
 # AI changelog
 
+## 2026-07-27 — Rehost now deploys current source changes
+
+Status: Implemented; live deployment cycle intentionally not executed
+
+- Extended `scripts/rehost-ppr.sh` from a restart-only wrapper into a guarded source deployment: validate the PPR checkout, run all Go tests, build a stripped static binary, atomically install it, restart through the shared handler, and wait for database readiness.
+- Retain one prior production binary and automatically restore it when restart or readiness verification fails. Concurrent rehosts are rejected with a host lock.
+- Kept production migrations, Caddy, and environment changes explicit. A build or test failure leaves the running service and binary unchanged; migrations required by new code must be reviewed and applied separately.
+
 ## 2026-07-27 — PPR rehost handler
 
 Status: Implemented; live restart intentionally not executed
