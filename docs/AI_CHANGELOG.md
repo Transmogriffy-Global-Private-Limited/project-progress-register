@@ -1,5 +1,14 @@
 # AI changelog
 
+## 2026-07-27 — Reporting and recovery review fixes
+
+Status: Implemented and automated-verified; database-live/restore verification pending
+
+- Bounded the authorized task timeline to opaque oldest-first keyset pages with a default of 100 and maximum of 200 events, while retaining full chronology through `next_cursor` continuation.
+- Corrected `attachment.added` metadata to preserve its creation-time `pending` state instead of projecting the attachment's later current state.
+- Kept database URLs out of `pg_dump`, `psql`, and `pg_restore` argument lists by using the protected libpq process environment, and made both operator scripts directly executable.
+- Updated focused tests, OpenAPI, frontend-facing contracts, the educational guide, the recovery guide, project state, and the living plan. Focused tests, OpenAPI validation, the full formatter/tidiness/vet/test/build verifier, race detection, Bash syntax, and all three loopback documentation/base-path smoke states pass. No database, service, or deployment was modified.
+
 ## 2026-07-27 — Review/reporting migrations and current backend deployed
 
 Status: Production migration and rehost verified; data-creating lifecycle/restore verification pending

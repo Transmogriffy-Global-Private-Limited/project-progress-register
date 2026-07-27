@@ -17,7 +17,7 @@ Run only with explicit production-maintenance authorization:
 sudo ./scripts/backup-ppr.sh /etc/ppr/ppr.env /var/backups/ppr
 ```
 
-The timestamped output directory is owner-only and contains `database.dump`, `attachments.tar.gz`, `manifest.sha256`, and a non-secret manifest. Copy completed packages to the approved encrypted off-host target. Do not commit them or keep the only copy on the application VPS.
+The timestamped output directory is owner-only and contains `database.dump`, `attachments.tar.gz`, `manifest.sha256`, and a non-secret manifest. The database URL remains in the protected process environment and is not passed in the command argument list. Copy completed packages to the approved encrypted off-host target. Do not commit them or keep the only copy on the application VPS.
 
 If capture fails, the script reports its incomplete staging path and still attempts to restore the service's prior active state. Operators inspect readiness and logs before removing any incomplete artifact.
 

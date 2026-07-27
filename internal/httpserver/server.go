@@ -130,7 +130,7 @@ type ProjectAccess interface {
 	ListAssessments(context.Context, identity.User, string, string, projects.AuditContext) ([]projects.Assessment, error)
 	SetAssessment(context.Context, identity.User, string, string, projects.SetAssessmentInput, projects.AuditContext) (projects.Assessment, error)
 	GetDashboard(context.Context, identity.User, projects.AuditContext) (projects.Dashboard, error)
-	GetTaskTimeline(context.Context, identity.User, string, string, projects.AuditContext) ([]projects.TimelineEvent, error)
+	GetTaskTimeline(context.Context, identity.User, string, string, projects.TimelineQuery, projects.AuditContext) (projects.TimelinePage, error)
 }
 
 type ProgressAccess interface {

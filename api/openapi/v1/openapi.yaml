@@ -701,20 +701,24 @@ paths:
     get:
       tags: [Reporting]
       operationId: getTaskTimeline
-      summary: Recreate the complete authorized chronology of a task
+      summary: Read the authorized chronology of a task
       description: >-
-        Admins and current project Members receive oldest-first task creation and edits, progress and revisions,
+        Admins and current project Members receive a bounded oldest-first page of task creation and edits, progress and revisions,
         attachments and their state/access events, comments, suggestion acceptance, and assessment versions.
-        Metadata contains sanitized HTML beside every Markdown source field and excludes security request metadata.
+        Metadata contains sanitized HTML beside every Markdown source field and excludes security request metadata. Follow
+        next_cursor until it is absent to reconstruct the complete chronology.
       security: [{cookieSession: []}]
       parameters:
         - {$ref: '#/components/parameters/ProjectID'}
         - {$ref: '#/components/parameters/TaskID'}
+        - {name: limit, in: query, description: Maximum timeline events returned., schema: {type: integer, minimum: 1, maximum: 200, default: 100}}
+        - {name: cursor, in: query, description: Opaque next_cursor from the previous page., schema: {type: string, maxLength: 1024}}
       responses:
-        '200': {description: Complete oldest-first task chronology., content: {application/json: {schema: {$ref: '#/components/schemas/TaskTimelineResponse'}}}}
+        '200': {description: Bounded oldest-first task chronology page., content: {application/json: {schema: {$ref: '#/components/schemas/TaskTimelineResponse'}}}}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/health/live:
     get:
       tags: [Health]
@@ -1403,7 +1407,9 @@ components:
       type: object
       additionalProperties: false
       required: [timeline]
-      properties: {timeline: {type: array, items: {$ref: '#/components/schemas/TimelineEvent'}}}
+      properties:
+        timeline: {type: array, maxItems: 200, items: {$ref: '#/components/schemas/TimelineEvent'}}
+        next_cursor: {type: string, description: Opaque cursor for the next oldest-first page; absent on the final page.}
     IdentityAuditRecord:
       type: object
       additionalProperties: false

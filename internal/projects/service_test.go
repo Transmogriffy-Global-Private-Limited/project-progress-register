@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
 )
@@ -99,8 +100,11 @@ func (*fakeRepository) CreateAssessment(_ context.Context, actorID string, _ boo
 func (*fakeRepository) GetDashboard(context.Context, string, bool) ([]DashboardProject, error) {
 	return []DashboardProject{{ID: "project", Active: true, TaskCount: 2, ProgressUpdateCount: 3, AcceptedSuggestionCount: 1, CurrentAssessments: AssessmentCounts{OnTrack: 1}}}, nil
 }
-func (*fakeRepository) GetTaskTimeline(context.Context, string, bool, string, string) ([]TimelineEvent, error) {
-	return []TimelineEvent{{ID: "event", Action: "comment.created", Metadata: map[string]any{"content_markdown": "**Review**"}}}, nil
+func (*fakeRepository) GetTaskTimeline(context.Context, string, bool, string, string, timelinePersistenceQuery) ([]TimelineEvent, error) {
+	return []TimelineEvent{
+		{ID: "event-1", Action: "comment.created", OccurredAt: time.Date(2026, 7, 27, 10, 0, 0, 0, time.UTC), Metadata: map[string]any{"content_markdown": "**Review**"}},
+		{ID: "event-2", Action: "assessment.created", OccurredAt: time.Date(2026, 7, 27, 11, 0, 0, 0, time.UTC), Metadata: map[string]any{}},
+	}, nil
 }
 func (f *fakeRepository) AppendAudit(_ context.Context, event auditEvent) error {
 	f.deniedAudit = event.Outcome == "denied"

@@ -1,6 +1,11 @@
 package httpserver
 
-import "net/http"
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/projects"
+)
 
 func dashboardAPIHandler(options Options) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -25,11 +30,23 @@ func taskTimelineAPIHandler(options Options, projectID, taskID string) http.Hand
 			writeError(w, http.StatusUnauthorized, "unauthenticated", "Authentication is required.")
 			return
 		}
-		events, err := options.Projects.GetTaskTimeline(r.Context(), session.User, projectID, taskID, auditContext(r))
+		limit := 0
+		if value := r.URL.Query().Get("limit"); value != "" {
+			parsed, err := strconv.Atoi(value)
+			if err != nil {
+				writeError(w, http.StatusUnprocessableEntity, "validation_failed", "limit: must be between 1 and 200")
+				return
+			}
+			limit = parsed
+		}
+		page, err := options.Projects.GetTaskTimeline(r.Context(), session.User, projectID, taskID, projects.TimelineQuery{
+			Limit:  limit,
+			Cursor: r.URL.Query().Get("cursor"),
+		}, auditContext(r))
 		if err != nil {
 			writeProjectError(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"timeline": events})
+		writeJSON(w, http.StatusOK, page)
 	}
 }

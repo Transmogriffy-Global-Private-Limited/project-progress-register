@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func (r *PostgresRepository) GetTaskTimeline(ctx context.Context, actorID string, admin bool, projectID, taskID string) ([]TimelineEvent, error) {
+func (r *PostgresRepository) GetTaskTimeline(ctx context.Context, actorID string, admin bool, projectID, taskID string, query timelinePersistenceQuery) ([]TimelineEvent, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -17,6 +17,12 @@ func (r *PostgresRepository) GetTaskTimeline(ctx context.Context, actorID string
 	}
 	if err := requireScopedTask(ctx, tx, projectID, taskID, false); err != nil {
 		return nil, err
+	}
+	var cursorTime any
+	var cursorID string
+	if query.Cursor != nil {
+		cursorTime = query.Cursor.OccurredAt
+		cursorID = query.Cursor.ID
 	}
 	rows, err := tx.Query(ctx, `
 		WITH timeline AS (
@@ -61,7 +67,7 @@ func (r *PostgresRepository) GetTaskTimeline(ctx context.Context, actorID string
 			SELECT 'attachment:'||pa.id::text||':added','attachment.added','progress_attachment',pa.id,pa.uploaded_by,pa.created_at,
 			       jsonb_build_object('progress_update_id',pa.progress_update_id,'original_name',pa.original_name,'detected_mime',pa.detected_mime,'media_kind',pa.media_kind,
 			         'source',pa.source,'verification_status',pa.verification_status,'verification_reason',pa.verification_reason,'size_bytes',pa.size_bytes,'sha256',pa.sha256,
-			         'storage_state',pa.storage_state,'failure_reason',pa.failure_reason)
+			         'storage_state','pending','failure_reason','')
 			FROM public.progress_attachments pa JOIN public.progress_updates pu ON pu.id=pa.progress_update_id WHERE pu.task_id=$1::uuid
 
 			UNION ALL
@@ -87,7 +93,9 @@ func (r *PostgresRepository) GetTaskTimeline(ctx context.Context, actorID string
 		)
 		SELECT e.event_id,e.action,e.entity_type,e.entity_id::text,u.id::text,u.username,e.occurred_at,e.metadata
 		FROM timeline e JOIN public.users u ON u.id=e.actor_id
-		ORDER BY e.occurred_at,e.event_id`, taskID)
+		WHERE ($2::timestamptz IS NULL OR e.occurred_at>$2 OR (e.occurred_at=$2 AND e.event_id>$3))
+		ORDER BY e.occurred_at,e.event_id
+		LIMIT $4`, taskID, cursorTime, cursorID, query.Limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("query task timeline: %w", err)
 	}

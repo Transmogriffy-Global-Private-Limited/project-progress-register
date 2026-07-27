@@ -173,7 +173,7 @@ Active feature: Deferred backend verification and completion reconciliation
 
 Current implementation slice: Run database-live migrations/lifecycle verification and an empty-target restore drill on explicitly disposable targets
 
-Last completed slice: Dashboard summaries, full audit, authorized task timeline, and guarded backup/restore implemented; accumulated automated verification passed
+Last completed slice: Reporting/recovery review follow-up added bounded task-timeline pagination, historical attachment creation state, credential-safe database tool invocation, and executable maintenance scripts
 
 Next expected slice: Database-live lifecycle verification and the coordinated restore drill on explicitly disposable targets
 
