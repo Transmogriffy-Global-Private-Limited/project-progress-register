@@ -1,6 +1,6 @@
 # ADR 0004 — Local filesystem attachment storage
 
-Status: Accepted; Step 06 implementation in progress
+Status: Accepted; implemented, automated-verified, migrated, and deployed; guarded database-live lifecycle/restore verification pending
 
 Date: 2026-07-27
 

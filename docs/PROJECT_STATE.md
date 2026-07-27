@@ -16,6 +16,7 @@ As of 2026-07-27
 - Baseline HTTP security headers, structured request logs, panic containment, server timeouts, and graceful shutdown.
 - Native PowerShell formatting, build, test, run, migration, OpenAPI, and full-verification scripts.
 - Authoritative product, architecture, domain, permission, evidence, operational, planning, and decision documentation.
+- Self-contained frontend integration handoff covering every browser workflow, all 39 OpenAPI operations, payload/response types, permissions, errors, retries, uploads, pagination, and screen-level recovery, with route/operation drift verification in the full suite.
 - One-time first-Admin bootstrap guarded by an optional environment secret and a PostgreSQL advisory lock.
 - Local Admin/Member account schema and Argon2id password hashing with bounded concurrent work.
 - Revocable PostgreSQL-backed opaque sessions, host-only `HttpOnly`/`SameSite=Lax` cookies, production `Secure`, and session-bound HMAC CSRF tokens.

@@ -1,6 +1,6 @@
 # ADR 0003 — Operational evidence and conservative geofence verification
 
-Status: Accepted; Step 06 implementation in progress
+Status: Accepted; implemented, automated-verified, migrated, and deployed; guarded database-live lifecycle verification pending
 
 Date: 2026-07-27
 

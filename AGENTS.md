@@ -36,9 +36,12 @@ Approved plans are binding. Material architectural or scope deviations require u
 - Educational and operational guides: `docs/guides/` and `docs/LOCAL_DEVELOPMENT.md`
 - Integration documentation: `docs/integrations/`
 - Human-readable contracts: `docs/contracts/`
+- Complete frontend handoff: `docs/integrations/FRONTEND_INTEGRATION.md`
 - Authoritative OpenAPI source: `api/openapi/v1/openapi.yaml`
 - Detailed plans: `docs/plans/`
 - Architecture decisions: `docs/decisions/`
+
+Run `scripts/verify-fe-integration-docs.ps1` after any HTTP route, operation ID, browser-visible payload, authentication, authorization, pagination, upload, or error-contract change.
 
 The OpenAPI source is specification-first and committed. Do not create an independently maintained generated schema.
 

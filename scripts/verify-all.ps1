@@ -16,6 +16,8 @@ if ($scriptErrors.Count -gt 0) {
     throw "PowerShell syntax errors:`n$($scriptErrors -join "`n")"
 }
 
+& .\scripts\verify-fe-integration-docs.ps1
+
 $goFiles = @(Get-ChildItem .\cmd, .\internal, .\api -Recurse -File -Filter '*.go' | ForEach-Object { $_.FullName })
 $unformatted = @()
 if ($goFiles.Count -gt 0) {

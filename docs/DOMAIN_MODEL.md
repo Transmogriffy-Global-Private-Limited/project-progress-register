@@ -1,6 +1,6 @@
 # Domain model
 
-Status: Production remains at five applied migrations. Migrations `000006` and `000007` plus their consuming backend behavior pass automated verification locally but remain unapplied and database-live unverified.
+Status: Implemented and deployed through migration `000007`; guarded data-creating lifecycle verification remains pending on an explicitly disposable target.
 
 ## Aggregate relationships
 

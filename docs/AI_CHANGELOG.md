@@ -1,5 +1,15 @@
 # AI changelog
 
+## 2026-07-27 — Complete frontend integration handoff
+
+Status: Implemented and verified
+
+- Added `docs/integrations/FRONTEND_INTEGRATION.md` as the self-contained “read this and build the FE” contract: deployed coordinates, same-origin cookie/CSRF client, role/ownership matrix, complete TypeScript shapes, all 39 OpenAPI operations, request bodies, responses, status/error behavior, multipart location/file flow, optimistic versions, pagination, retries, rendering rules, and screen-level fetch/invalidation recipes.
+- Added `scripts/verify-fe-integration-docs.ps1` and registered it in the full suite so every OpenAPI operation ID and path must remain represented in the handoff.
+- Corrected stale deployed-state claims in the hosting plan, deployment guide, domain model, PostgreSQL integration, progress-evidence guide, ADR statuses, documentation index, OpenAPI JSON transport errors, and the multipart schema: browser metadata is a JSON-encoded ordinary text field, while only repeated `files` parts carry filenames. Production remains unchanged at seven applied migrations and the deployed `c019762` backend source.
+- Frontend handoff coverage reports 39 operations across 29 paths. OpenAPI validation, the full formatter/module-tidiness/vet/test/build suite, PowerShell syntax, `git diff --check`, and docs-enabled/docs-disabled/prefixed loopback smoke states pass.
+- No runtime, database, service, Caddy, or production deployment change was made.
+
 ## 2026-07-27 — Reporting and recovery review fixes deployed
 
 Status: Production rehost verified; database-live/restore verification pending

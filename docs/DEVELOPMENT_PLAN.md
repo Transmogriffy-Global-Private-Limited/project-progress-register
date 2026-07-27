@@ -165,6 +165,20 @@ Verification: Application, database, systemd, listener, loopback health, route i
 
 Detailed plan: `plans/0007-production-hosting.md`.
 
+### Feature: Complete frontend integration handoff
+
+Status: Implemented
+
+Phase: 8
+
+Depends on: the complete deployed backend contract.
+
+Objective: Let a separate frontend engineer build the whole product without backend code archaeology or undocumented chat context.
+
+Scope: One self-contained browser guide covering same-origin cookie/CSRF transport, roles and ownership, all OpenAPI operations and schemas, mutation bodies, multipart uploads, evidence labels, optimistic versions, pagination, errors, retries, screen data flows, and a drift verifier registered in the full suite.
+
+Canonical guide: `integrations/FRONTEND_INTEGRATION.md`.
+
 ## Current execution
 
 Current phase: Backend completion verification
@@ -173,7 +187,7 @@ Active feature: Deferred backend verification and completion reconciliation
 
 Current implementation slice: Run database-live migrations/lifecycle verification and an empty-target restore drill on explicitly disposable targets
 
-Last completed slice: Reporting/recovery review follow-up added bounded task-timeline pagination, historical attachment creation state, credential-safe database tool invocation, and executable maintenance scripts; the code-only production rehost is verified
+Last completed slice: Reconciled deployed-state documentation and added the exhaustive verified frontend integration handoff for all 39 operations
 
 Next expected slice: Database-live lifecycle verification and the coordinated restore drill on explicitly disposable targets
 
@@ -205,6 +219,8 @@ For production hosting, prefix-focused tests, Linux formatting/tidiness/vet/test
 The hosted-contract correction has passing focused coverage for prefixed attachment `content_path` values and deployment-resolved OpenAPI server defaults. The full verifier and all three loopback smoke states pass, including root docs enabled/disabled and `/backend` docs enabled with unprefixed isolation. Production serves the corrected current binary; public TLS readiness and the raw schema's resolved `/backend` default are verified.
 
 The reporting/recovery review follow-up is also deployed. Production remains at seven applied migrations, public IPv4/IPv6 readiness passes, and the hosted OpenAPI timeline operation exposes the verified bounded `limit`, opaque `cursor`, and optional `next_cursor` contract.
+
+The complete frontend handoff consolidates every browser-visible contract and workflow into `integrations/FRONTEND_INTEGRATION.md`. Its verifier checks that every OpenAPI operation ID and path remains represented and runs inside `scripts/verify-all.ps1`.
 
 ## V1 completion criteria
 
