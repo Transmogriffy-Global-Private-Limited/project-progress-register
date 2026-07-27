@@ -91,6 +91,7 @@ func TestAPIRoutesRejectOtherMethods(t *testing.T) {
 		requestPath = strings.ReplaceAll(requestPath, "{task_id}", "44444444-4444-4444-8444-444444444444")
 		requestPath = strings.ReplaceAll(requestPath, "{update_id}", "55555555-5555-4555-8555-555555555555")
 		requestPath = strings.ReplaceAll(requestPath, "{attachment_id}", "66666666-6666-4666-8666-666666666666")
+		requestPath = strings.ReplaceAll(requestPath, "{comment_id}", "77777777-7777-4777-8777-777777777777")
 		handler.ServeHTTP(response, httptest.NewRequest(http.MethodOptions, requestPath, nil))
 		if response.Code != http.StatusMethodNotAllowed {
 			t.Fatalf("OPTIONS %s response = %d", path, response.Code)
@@ -202,6 +203,18 @@ func (fakeProgress) Update(_ context.Context, _ identity.User, projectID, taskID
 func (fakeProgress) Download(context.Context, identity.User, string, string, string, string, progress.AuditContext) (progress.Download, error) {
 	return progress.Download{}, progress.ErrNotFound
 }
+func (fakeProgress) ListComments(context.Context, identity.User, string, string, string, progress.AuditContext) ([]progress.Comment, error) {
+	return []progress.Comment{}, nil
+}
+func (fakeProgress) CreateComment(_ context.Context, actor identity.User, _, _, updateID string, input progress.CreateCommentInput, _ progress.AuditContext) (progress.Comment, error) {
+	return progress.Comment{ID: "77777777-7777-4777-8777-777777777777", ProgressUpdateID: updateID, ContentMarkdown: input.ContentMarkdown, ContentHTML: "<p>Comment</p>", CreatedBy: progress.Actor{UserID: actor.ID, Username: actor.Username}}, nil
+}
+func (fakeProgress) AcceptSuggestion(_ context.Context, actor identity.User, _, taskID, updateID, commentID string, _ progress.AuditContext) (progress.AcceptedSuggestion, bool, error) {
+	return progress.AcceptedSuggestion{ID: "88888888-8888-4888-8888-888888888888", CommentID: commentID, ProgressUpdateID: updateID, TaskID: taskID, ContentMarkdown: "Suggestion", ContentHTML: "<p>Suggestion</p>", AcceptedBy: progress.Actor{UserID: actor.ID, Username: actor.Username}}, true, nil
+}
+func (fakeProgress) ListAcceptedSuggestions(context.Context, identity.User, string, string, progress.AuditContext) ([]progress.AcceptedSuggestion, error) {
+	return []progress.AcceptedSuggestion{}, nil
+}
 
 func (fakeProjects) ListProjects(context.Context, identity.User, projects.AuditContext) ([]projects.Project, error) {
 	return []projects.Project{{ID: "11111111-1111-4111-8111-111111111111", Name: "Site Alpha", Active: true, Version: 1}}, nil
@@ -238,6 +251,21 @@ func (fakeProjects) CreateTask(_ context.Context, actor identity.User, projectID
 }
 func (fakeProjects) UpdateTask(_ context.Context, actor identity.User, projectID, taskID string, input projects.UpdateTaskInput, _ projects.AuditContext) (projects.Task, error) {
 	return projects.Task{ID: taskID, ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: projects.TaskActor{UserID: actor.ID, Username: actor.Username}, Version: input.ExpectedVersion + 1}, nil
+}
+func (fakeProjects) GetCurrentAssessment(context.Context, identity.User, string, string, projects.AuditContext) (*projects.Assessment, error) {
+	return nil, nil
+}
+func (fakeProjects) ListAssessments(context.Context, identity.User, string, string, projects.AuditContext) ([]projects.Assessment, error) {
+	return []projects.Assessment{}, nil
+}
+func (fakeProjects) SetAssessment(_ context.Context, actor identity.User, _, taskID string, input projects.SetAssessmentInput, _ projects.AuditContext) (projects.Assessment, error) {
+	return projects.Assessment{ID: "99999999-9999-4999-8999-999999999999", TaskID: taskID, Version: input.ExpectedVersion + 1, Verdict: input.Verdict, RemarkMarkdown: input.RemarkMarkdown, RemarkHTML: "<p>Assessment</p>", AssessedBy: projects.TaskActor{UserID: actor.ID, Username: actor.Username}}, nil
+}
+func (fakeProjects) GetDashboard(context.Context, identity.User, projects.AuditContext) (projects.Dashboard, error) {
+	return projects.Dashboard{Projects: []projects.DashboardProject{}}, nil
+}
+func (fakeProjects) GetTaskTimeline(context.Context, identity.User, string, string, projects.AuditContext) ([]projects.TimelineEvent, error) {
+	return []projects.TimelineEvent{}, nil
 }
 
 func (fakeIdentity) BootstrapAvailable(context.Context) (bool, error) { return true, nil }
@@ -299,6 +327,9 @@ func (fakeIdentity) ChangePassword(context.Context, identity.User, identity.Chan
 }
 func (fakeIdentity) ListIdentityAudit(context.Context, identity.User, identity.AuditContext) ([]identity.AuditRecord, error) {
 	return []identity.AuditRecord{{ID: "33333333-3333-4333-8333-333333333333", Action: "identity.user_created", TargetType: "user", Outcome: "succeeded", RequestID: "request-12345678", ClientIP: "127.0.0.1", Details: map[string]any{}}}, nil
+}
+func (fakeIdentity) ListAudit(context.Context, identity.User, identity.AuditQuery, identity.AuditContext) (identity.AuditPage, error) {
+	return identity.AuditPage{AuditEvents: []identity.AuditRecord{}}, nil
 }
 
 func TestAuthenticationHTTPContract(t *testing.T) {

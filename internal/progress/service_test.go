@@ -105,6 +105,18 @@ func (f *fakeRepository) MarkAttachmentFailed(context.Context, string, string, a
 func (f *fakeRepository) ListPendingAttachments(context.Context) ([]pendingAttachment, error) {
 	return nil, nil
 }
+func (f *fakeRepository) ListComments(context.Context, string, bool, string, string, string) ([]Comment, error) {
+	return []Comment{}, nil
+}
+func (f *fakeRepository) CreateComment(_ context.Context, actorID string, _ bool, _, _, updateID, content string, _ auditEvent) (Comment, error) {
+	return Comment{ID: "comment", ProgressUpdateID: updateID, ContentMarkdown: content, CreatedBy: Actor{UserID: actorID}}, nil
+}
+func (f *fakeRepository) AcceptSuggestion(_ context.Context, actorID string, _ bool, _, taskID, updateID, commentID string, _ auditEvent) (AcceptedSuggestion, bool, error) {
+	return AcceptedSuggestion{ID: "suggestion", CommentID: commentID, ProgressUpdateID: updateID, TaskID: taskID, ContentMarkdown: "Suggestion", AcceptedBy: Actor{UserID: actorID}}, true, nil
+}
+func (f *fakeRepository) ListAcceptedSuggestions(context.Context, string, bool, string, string) ([]AcceptedSuggestion, error) {
+	return []AcceptedSuggestion{}, nil
+}
 func (f *fakeRepository) AppendAudit(context.Context, auditEvent) error { return nil }
 
 type fakeStorage struct{ counter int }

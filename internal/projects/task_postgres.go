@@ -140,10 +140,11 @@ func (r *PostgresRepository) UpdateTask(ctx context.Context, actorID string, adm
 		return Task{}, err
 	}
 	var currentVersion int64
+	var previousName, previousGoals, previousDescription, previousResponsibleID, previousTargetDate string
 	err = tx.QueryRow(ctx, `
-		SELECT version FROM public.tasks
+		SELECT version,name,goals_markdown,description_markdown,COALESCE(responsible_user_id::text,''),COALESCE(target_date::text,'') FROM public.tasks
 		WHERE id = $1::uuid AND project_id = $2::uuid AND ($4::boolean OR created_by = $3::uuid)
-		FOR UPDATE`, taskID, projectID, actorID, admin).Scan(&currentVersion)
+		FOR UPDATE`, taskID, projectID, actorID, admin).Scan(&currentVersion, &previousName, &previousGoals, &previousDescription, &previousResponsibleID, &previousTargetDate)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Task{}, ErrNotFound
 	}
@@ -167,6 +168,22 @@ func (r *PostgresRepository) UpdateTask(ctx context.Context, actorID string, adm
 	if err != nil {
 		return Task{}, fmt.Errorf("update task: %w", err)
 	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO public.task_revisions(
+			task_id,from_version,to_version,
+			previous_name,previous_goals_markdown,previous_description_markdown,previous_responsible_user_id,previous_target_date,
+			new_name,new_goals_markdown,new_description_markdown,new_responsible_user_id,new_target_date,change_reason,edited_by
+		) VALUES(
+			$1::uuid,$2,$3,
+			$4,$5,$6,NULLIF($7,'')::uuid,NULLIF($8,'')::date,
+			$9,$10,$11,NULLIF($12,'')::uuid,NULLIF($13,'')::date,'user_edit',$14::uuid
+		)`, taskID, currentVersion, currentVersion+1,
+		previousName, previousGoals, previousDescription, previousResponsibleID, previousTargetDate,
+		input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, responsibleID, input.TargetDate, actorID); err != nil {
+		return Task{}, fmt.Errorf("insert task revision: %w", err)
+	}
+	event.Details["from_version"] = currentVersion
+	event.Details["to_version"] = currentVersion + 1
 	if err := insertAudit(ctx, tx, event); err != nil {
 		return Task{}, err
 	}

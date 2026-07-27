@@ -16,7 +16,7 @@ The verified foundation and trusted-identity slices provide:
 - an authoritative OpenAPI contract and environment-controlled embedded Swagger UI;
 - PowerShell-native local development and verification commands.
 
-The backend additionally contains account-administration, project-access, task-register, and Step 06 progress/revision/geotag/image-document-video attachment slices with automated verification passing. Database-live lifecycle verification remains pending. Product frontend work is outside this repository. Comments, suggestions, assessments, and dashboards remain planned. See `docs/PROJECT_STATE.md` for the exact verification boundary.
+The backend feature set now contains account administration, project access, task register and immutable task history, progress/revision/geotag/image-document-video attachments, review workflow, authorized task chronology, factual dashboards, complete Admin audit access, and guarded coordinated backup/restore. The accumulated automated suite passes; database-live migration/lifecycle verification and an empty-target restore drill remain pending. Product frontend work is outside this repository. See `docs/PROJECT_STATE.md` for the exact boundary.
 
 ## Start here
 

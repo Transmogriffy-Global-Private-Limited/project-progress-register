@@ -87,6 +87,21 @@ func (*fakeRepository) CreateTask(_ context.Context, actorID string, _ bool, pro
 func (*fakeRepository) UpdateTask(_ context.Context, actorID string, _ bool, projectID, taskID string, input taskPersistenceInput, _ auditEvent) (Task, error) {
 	return Task{ID: taskID, ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: TaskActor{UserID: actorID}, Version: input.ExpectedVersion + 1}, nil
 }
+func (*fakeRepository) GetCurrentAssessment(context.Context, string, bool, string, string) (*Assessment, error) {
+	return nil, nil
+}
+func (*fakeRepository) ListAssessments(context.Context, string, bool, string, string) ([]Assessment, error) {
+	return []Assessment{}, nil
+}
+func (*fakeRepository) CreateAssessment(_ context.Context, actorID string, _ bool, _, taskID string, input assessmentPersistenceInput, _ auditEvent) (Assessment, error) {
+	return Assessment{ID: "assessment", TaskID: taskID, Version: input.ExpectedVersion + 1, Verdict: input.Verdict, RemarkMarkdown: input.RemarkMarkdown, AssessedBy: TaskActor{UserID: actorID}}, nil
+}
+func (*fakeRepository) GetDashboard(context.Context, string, bool) ([]DashboardProject, error) {
+	return []DashboardProject{{ID: "project", Active: true, TaskCount: 2, ProgressUpdateCount: 3, AcceptedSuggestionCount: 1, CurrentAssessments: AssessmentCounts{OnTrack: 1}}}, nil
+}
+func (*fakeRepository) GetTaskTimeline(context.Context, string, bool, string, string) ([]TimelineEvent, error) {
+	return []TimelineEvent{{ID: "event", Action: "comment.created", Metadata: map[string]any{"content_markdown": "**Review**"}}}, nil
+}
 func (f *fakeRepository) AppendAudit(_ context.Context, event auditEvent) error {
 	f.deniedAudit = event.Outcome == "denied"
 	return nil

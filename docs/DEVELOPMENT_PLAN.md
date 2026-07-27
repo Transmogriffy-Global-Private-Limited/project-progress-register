@@ -117,7 +117,7 @@ Detailed plan: `plans/0006-progress-updates-and-attachments.md`.
 
 ### Feature: Comments and accepted suggestions
 
-Status: Approved
+Status: Implemented; verification pending
 
 Phase: 7
 
@@ -125,9 +125,11 @@ Depends on: progress updates.
 
 Objective: Add project discussion and separate Admin acceptance actions that surface official suggestions without modifying comments.
 
+Scope and acceptance: `plans/0008-review-comments-suggestions-assessments.md`.
+
 ### Feature: Admin assessments
 
-Status: Approved
+Status: Implemented; verification pending
 
 Phase: 7
 
@@ -135,15 +137,19 @@ Depends on: tasks and identity.
 
 Objective: Maintain a prominent current verdict/remark plus immutable assessment history.
 
+Scope and acceptance: `plans/0008-review-comments-suggestions-assessments.md`.
+
 ### Feature: Reporting APIs, audit access, and operational hardening
 
-Status: Approved
+Status: Implemented; verification pending
 
 Phase: 8
 
 Depends on: core workflows.
 
 Objective: Complete useful dashboard query contracts, full Admin audit access, backup/recovery documentation, and production handoff for the separate frontend and operators.
+
+Scope and acceptance: `plans/0009-reporting-audit-and-recovery.md`.
 
 ### Feature: Production hosting at `/backend`
 
@@ -161,27 +167,26 @@ Detailed plan: `plans/0007-production-hosting.md`.
 
 ## Current execution
 
-Current phase: Review
+Current phase: Backend completion verification
 
-Active feature: None
+Active feature: Deferred backend verification and completion reconciliation
 
-Current implementation slice: None
+Current implementation slice: Run database-live migrations/lifecycle verification and an empty-target restore drill on explicitly disposable targets
 
-Last completed slice: Prefix-aware attachment response links and deployment-resolved Swagger server selection, verified locally
+Last completed slice: Dashboard summaries, full audit, authorized task timeline, and guarded backup/restore implemented; accumulated automated verification passed
 
-Next expected slice: Comments, accepted suggestions, and Admin assessments
+Next expected slice: Production migration/rehost only when separately authorized after verification
 
 Blocked by: None
 
 ## Next approved work
 
-1. Use a separate disposable database for any guarded account/project/task/progress lifecycle verification.
-2. Implement comments, accepted suggestions, and Admin assessments as the next larger backend slice.
+1. Run migrations/lifecycle verification and the restore drill only on explicitly disposable database/filesystem targets.
 
 ## Risks and unresolved decisions
 
-- Define the exact dashboard meaning of “needs progress update” before the reporting slice.
-- Define production retention, scheduled database/filesystem backup targets, and a restore drill after real attachment data begins.
+- The dashboard intentionally exposes facts only; a future product decision may define “needs progress update” without changing current factual fields.
+- Choose the off-host backup target, retention window, and systemd timer schedule before operational activation; the coordinated scripts and restore procedure are implemented.
 - Email delivery remains deferred; account creation and reset use generated temporary credentials displayed exactly once and require replacement after login.
 - Members with current project access may read other authors' progress revision history; responsibility and creator ownership affect mutation, not project read visibility.
 - Confirm display timezone policy; storage remains UTC.
@@ -189,7 +194,9 @@ Blocked by: None
 
 ## Verification strategy
 
-Every slice normally runs formatting, focused tests, package tests, `go vet`, build, contract validation, relevant loopback integration checks, residue scan, full verification, `git diff --check`, and `git status --short`. Those checks pass for Steps 03–05, including race detection and both API-documentation toggle smoke modes. Database-modifying verification uses only an explicitly configured disposable test database; the guarded account/project/task lifecycle scripts remain pending because the configured database is not empty.
+Every slice normally runs formatting, focused tests, package tests, `go vet`, build, contract validation, relevant loopback integration checks, residue scan, full verification, `git diff --check`, and `git status --short`. At the operator's direction, execution of tests, builds, schema validation, and live verifiers is temporarily deferred until backend feature completion; verification assets continue to be authored in each slice. Earlier checks retain their recorded results. Database-modifying verification uses only an explicitly configured disposable test database; guarded lifecycle scripts never belong in automatic verification.
+
+By explicit operator direction, implementation after the hosted-contract correction proceeded without executing tests until the backend feature set was complete. At completion, focused packages, OpenAPI validation/route coverage, the full formatter/tidy/vet/test/build verifier, race detection, Bash syntax, and all three loopback API-documentation/base-path smoke states passed. Database-live migration/lifecycle verification and the coordinated empty-target restore drill remain pending because no disposable targets were authorized in this pass.
 
 For Step 06, focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. All five migrations are applied to clean production `pprdb`; the guarded database-live verifier remains intentionally pending for a separate disposable target.
 

@@ -26,6 +26,10 @@ tags:
     description: Project-scoped task register, immutable ownership, responsibility, dates, and safe Markdown.
   - name: Progress
     description: Chronological progress, immutable revisions, geotag evidence, private attachments, and authorized downloads.
+  - name: Review
+    description: Immutable progress comments, accepted suggestions, and Admin task assessments.
+  - name: Reporting
+    description: Authorized factual dashboard aggregates, task chronology, and complete Admin audit access.
 paths:
   /api/v1/setup/bootstrap:
     post:
@@ -206,6 +210,36 @@ paths:
         '200':
           description: Newest identity audit events in reverse chronological order.
           content: {application/json: {schema: {$ref: '#/components/schemas/IdentityAuditResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /api/v1/admin/audit:
+    get:
+      tags: [Reporting]
+      operationId: listCompleteAudit
+      summary: Page through the complete append-only audit stream
+      description: Admin-only. Returns every action category newest-first with stable opaque keyset pagination and optional exact filters.
+      security: [{cookieSession: []}]
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 100}}
+        - {name: cursor, in: query, schema: {type: string}, description: Opaque next_cursor from the previous response.}
+        - {name: action, in: query, schema: {type: string, maxLength: 100}, description: Exact action name.}
+        - {name: outcome, in: query, schema: {type: string, enum: [succeeded, failed, denied]}}
+        - {name: actor_user_id, in: query, schema: {type: string, format: uuid}}
+        - {name: target_type, in: query, schema: {type: string, maxLength: 50}, description: Exact target type.}
+      responses:
+        '200': {description: One bounded audit page., content: {application/json: {schema: {$ref: '#/components/schemas/AuditPage'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/dashboard:
+    get:
+      tags: [Reporting]
+      operationId: getDashboard
+      summary: Get factual summaries for every authorized project
+      description: Admins receive all projects; Members receive current memberships only. Counts and latest times deliberately do not define a needs-progress policy.
+      security: [{cookieSession: []}]
+      responses:
+        '200': {description: Authorized aggregate totals and per-project facts., content: {application/json: {schema: {$ref: '#/components/schemas/Dashboard'}}}}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
   /api/v1/projects:
@@ -542,6 +576,145 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '410': {$ref: '#/components/responses/AttachmentUnavailable'}
         '503': {$ref: '#/components/responses/AttachmentPending'}
+  /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates/{update_id}/comments:
+    get:
+      tags: [Review]
+      operationId: listProgressComments
+      summary: List immutable comments on one authorized progress update
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/UpdateID'}
+      responses:
+        '200': {description: Comments in chronological order with any separate acceptance badge., content: {application/json: {schema: {$ref: '#/components/schemas/CommentsResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [Review]
+      operationId: createProgressComment
+      summary: Add an immutable Markdown comment
+      description: Requires current project access and an active project. Comment source is durable; content_html is an allowlist-sanitized projection.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/UpdateID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateCommentRequest'}, example: {content_markdown: Please confirm the concrete curing result.}}}
+      responses:
+        '201': {description: Comment and audit event committed atomically., content: {application/json: {schema: {$ref: '#/components/schemas/CommentResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates/{update_id}/comments/{comment_id}/accept:
+    post:
+      tags: [Review]
+      operationId: acceptProgressCommentSuggestion
+      summary: Accept a comment as an official task suggestion
+      description: Admin-only and idempotent. First acceptance returns 201 and appends audit; a retry returns the existing record with 200 and no duplicate audit.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/UpdateID'}
+        - {$ref: '#/components/parameters/CommentID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      responses:
+        '200': {description: Existing acceptance returned for an idempotent retry., content: {application/json: {schema: {$ref: '#/components/schemas/AcceptedSuggestionMutationResponse'}}}}
+        '201': {description: Separate immutable acceptance and audit event created., content: {application/json: {schema: {$ref: '#/components/schemas/AcceptedSuggestionMutationResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/v1/projects/{project_id}/tasks/{task_id}/accepted-suggestions:
+    get:
+      tags: [Review]
+      operationId: listTaskAcceptedSuggestions
+      summary: List accepted suggestions surfaced from task progress comments
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+      responses:
+        '200': {description: Accepted suggestions in acceptance order., content: {application/json: {schema: {$ref: '#/components/schemas/AcceptedSuggestionsResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/projects/{project_id}/tasks/{task_id}/assessment:
+    get:
+      tags: [Review]
+      operationId: getCurrentTaskAssessment
+      summary: Get the current Admin assessment visible to authorized task readers
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+      responses:
+        '200': {description: Current assessment or null when none exists., content: {application/json: {schema: {$ref: '#/components/schemas/CurrentAssessmentResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      tags: [Review]
+      operationId: setCurrentTaskAssessment
+      summary: Append a new current Admin assessment
+      description: Admin-only. expected_version is zero for the first assessment and must match the current version thereafter. Prior rows remain immutable.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SetAssessmentRequest'}, example: {verdict: needs_attention, remark_markdown: Drainage evidence is still pending., expected_version: 0}}}
+      responses:
+        '201': {description: New immutable assessment version and audit event committed., content: {application/json: {schema: {$ref: '#/components/schemas/AssessmentResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/projects/{project_id}/tasks/{task_id}/assessments:
+    get:
+      tags: [Review]
+      operationId: listTaskAssessmentHistory
+      summary: List complete immutable task assessment history
+      description: Admin-only; newest version first. Members use the current-assessment endpoint.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+      responses:
+        '200': {description: Complete assessment history., content: {application/json: {schema: {$ref: '#/components/schemas/AssessmentsResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/projects/{project_id}/tasks/{task_id}/timeline:
+    get:
+      tags: [Reporting]
+      operationId: getTaskTimeline
+      summary: Recreate the complete authorized chronology of a task
+      description: >-
+        Admins and current project Members receive oldest-first task creation and edits, progress and revisions,
+        attachments and their state/access events, comments, suggestion acceptance, and assessment versions.
+        Metadata contains sanitized HTML beside every Markdown source field and excludes security request metadata.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+      responses:
+        '200': {description: Complete oldest-first task chronology., content: {application/json: {schema: {$ref: '#/components/schemas/TaskTimelineResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /api/v1/health/live:
     get:
       tags: [Health]
@@ -613,6 +786,11 @@ components:
     AttachmentID:
       in: path
       name: attachment_id
+      required: true
+      schema: {type: string, format: uuid}
+    CommentID:
+      in: path
+      name: comment_id
       required: true
       schema: {type: string, format: uuid}
     IdempotencyKey:
@@ -1065,6 +1243,167 @@ components:
       additionalProperties: false
       required: [progress_updates]
       properties: {progress_updates: {type: array, items: {$ref: '#/components/schemas/ProgressUpdate'}}}
+    CreateCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [content_markdown]
+      properties:
+        content_markdown: {type: string, minLength: 1, maxLength: 10000, description: Non-whitespace Markdown; backend also enforces at most 20000 UTF-8 bytes.}
+    SuggestionAcceptance:
+      type: object
+      additionalProperties: false
+      required: [id, accepted_by, accepted_at]
+      properties:
+        id: {type: string, format: uuid}
+        accepted_by: {$ref: '#/components/schemas/ProgressActor'}
+        accepted_at: {type: string, format: date-time}
+    Comment:
+      type: object
+      additionalProperties: false
+      required: [id, progress_update_id, content_markdown, content_html, created_by, created_at, accepted_suggestion]
+      properties:
+        id: {type: string, format: uuid}
+        progress_update_id: {type: string, format: uuid}
+        content_markdown: {type: string}
+        content_html: {type: string, readOnly: true, description: Allowlist-sanitized HTML derived from immutable Markdown.}
+        created_by: {$ref: '#/components/schemas/ProgressActor'}
+        created_at: {type: string, format: date-time}
+        accepted_suggestion:
+          oneOf: [{$ref: '#/components/schemas/SuggestionAcceptance'}, {type: 'null'}]
+    CommentResponse:
+      type: object
+      additionalProperties: false
+      required: [comment]
+      properties: {comment: {$ref: '#/components/schemas/Comment'}}
+    CommentsResponse:
+      type: object
+      additionalProperties: false
+      required: [comments]
+      properties: {comments: {type: array, items: {$ref: '#/components/schemas/Comment'}}}
+    AcceptedSuggestion:
+      type: object
+      additionalProperties: false
+      required: [id, comment_id, progress_update_id, task_id, content_markdown, content_html, comment_author, commented_at, accepted_by, accepted_at]
+      properties:
+        id: {type: string, format: uuid}
+        comment_id: {type: string, format: uuid}
+        progress_update_id: {type: string, format: uuid}
+        task_id: {type: string, format: uuid}
+        content_markdown: {type: string}
+        content_html: {type: string, readOnly: true}
+        comment_author: {$ref: '#/components/schemas/ProgressActor'}
+        commented_at: {type: string, format: date-time}
+        accepted_by: {$ref: '#/components/schemas/ProgressActor'}
+        accepted_at: {type: string, format: date-time}
+    AcceptedSuggestionMutationResponse:
+      type: object
+      additionalProperties: false
+      required: [accepted_suggestion, created]
+      properties:
+        accepted_suggestion: {$ref: '#/components/schemas/AcceptedSuggestion'}
+        created: {type: boolean, description: True only when this request created the acceptance.}
+    AcceptedSuggestionsResponse:
+      type: object
+      additionalProperties: false
+      required: [accepted_suggestions]
+      properties: {accepted_suggestions: {type: array, items: {$ref: '#/components/schemas/AcceptedSuggestion'}}}
+    SetAssessmentRequest:
+      type: object
+      additionalProperties: false
+      required: [verdict, remark_markdown, expected_version]
+      properties:
+        verdict: {type: string, enum: [on_track, needs_attention, blocked, complete]}
+        remark_markdown: {type: string, minLength: 1, maxLength: 10000, description: Non-whitespace Markdown; backend also enforces at most 20000 UTF-8 bytes.}
+        expected_version: {type: integer, format: int64, minimum: 0, description: Zero for the first assessment; otherwise the current assessment version.}
+    Assessment:
+      type: object
+      additionalProperties: false
+      required: [id, task_id, version, verdict, remark_markdown, remark_html, assessed_by, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        task_id: {type: string, format: uuid}
+        version: {type: integer, format: int64, minimum: 1}
+        verdict: {type: string, enum: [on_track, needs_attention, blocked, complete]}
+        remark_markdown: {type: string}
+        remark_html: {type: string, readOnly: true, description: Allowlist-sanitized HTML derived from immutable Markdown.}
+        assessed_by: {$ref: '#/components/schemas/TaskActor'}
+        created_at: {type: string, format: date-time}
+    CurrentAssessmentResponse:
+      type: object
+      additionalProperties: false
+      required: [assessment]
+      properties:
+        assessment:
+          oneOf: [{$ref: '#/components/schemas/Assessment'}, {type: 'null'}]
+    AssessmentResponse:
+      type: object
+      additionalProperties: false
+      required: [assessment]
+      properties: {assessment: {$ref: '#/components/schemas/Assessment'}}
+    AssessmentsResponse:
+      type: object
+      additionalProperties: false
+      required: [assessments]
+      properties: {assessments: {type: array, items: {$ref: '#/components/schemas/Assessment'}}}
+    AssessmentCounts:
+      type: object
+      additionalProperties: false
+      required: [on_track, needs_attention, blocked, complete]
+      properties:
+        on_track: {type: integer, format: int64, minimum: 0}
+        needs_attention: {type: integer, format: int64, minimum: 0}
+        blocked: {type: integer, format: int64, minimum: 0}
+        complete: {type: integer, format: int64, minimum: 0}
+    DashboardProject:
+      type: object
+      additionalProperties: false
+      required: [id, name, active, task_count, progress_update_count, accepted_suggestion_count, latest_progress_at, current_assessments]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        active: {type: boolean}
+        task_count: {type: integer, format: int64, minimum: 0}
+        progress_update_count: {type: integer, format: int64, minimum: 0}
+        accepted_suggestion_count: {type: integer, format: int64, minimum: 0}
+        latest_progress_at:
+          oneOf: [{type: string, format: date-time}, {type: 'null'}]
+        current_assessments: {$ref: '#/components/schemas/AssessmentCounts'}
+    DashboardTotals:
+      type: object
+      additionalProperties: false
+      required: [project_count, active_project_count, inactive_project_count, task_count, progress_update_count, accepted_suggestion_count, current_assessments]
+      properties:
+        project_count: {type: integer, format: int64, minimum: 0}
+        active_project_count: {type: integer, format: int64, minimum: 0}
+        inactive_project_count: {type: integer, format: int64, minimum: 0}
+        task_count: {type: integer, format: int64, minimum: 0}
+        progress_update_count: {type: integer, format: int64, minimum: 0}
+        accepted_suggestion_count: {type: integer, format: int64, minimum: 0}
+        current_assessments: {$ref: '#/components/schemas/AssessmentCounts'}
+    Dashboard:
+      type: object
+      additionalProperties: false
+      required: [totals, projects]
+      properties:
+        totals: {$ref: '#/components/schemas/DashboardTotals'}
+        projects: {type: array, items: {$ref: '#/components/schemas/DashboardProject'}}
+    TimelineEvent:
+      type: object
+      additionalProperties: false
+      required: [id, action, entity_type, entity_id, actor, occurred_at, metadata]
+      properties:
+        id: {type: string, description: Stable event identifier scoped by its source record and transition.}
+        action: {type: string, enum: [task.created, task.updated, progress.created, progress.updated, attachment.added, attachment.available, attachment.failed, attachment.downloaded, comment.created, suggestion.accepted, assessment.created]}
+        entity_type: {type: string}
+        entity_id: {type: string, format: uuid}
+        actor: {$ref: '#/components/schemas/TaskActor'}
+        occurred_at: {type: string, format: date-time}
+        metadata: {type: object, additionalProperties: true, description: Typed action metadata; Markdown keys have a sibling allowlist-sanitized HTML key.}
+    TaskTimelineResponse:
+      type: object
+      additionalProperties: false
+      required: [timeline]
+      properties: {timeline: {type: array, items: {$ref: '#/components/schemas/TimelineEvent'}}}
     IdentityAuditRecord:
       type: object
       additionalProperties: false
@@ -1088,6 +1427,13 @@ components:
       required: [audit_events]
       properties:
         audit_events: {type: array, maxItems: 200, items: {$ref: '#/components/schemas/IdentityAuditRecord'}}
+    AuditPage:
+      type: object
+      additionalProperties: false
+      required: [audit_events]
+      properties:
+        audit_events: {type: array, maxItems: 200, items: {$ref: '#/components/schemas/IdentityAuditRecord'}}
+        next_cursor: {type: string, description: Opaque continuation token; absent on the final page.}
     LogoutResponse:
       type: object
       additionalProperties: false

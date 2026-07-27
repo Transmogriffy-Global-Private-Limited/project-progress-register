@@ -27,6 +27,8 @@ The hostname root is intentionally `404`. `/backend` redirects permanently to `/
 
 Database dumps and Caddy backups are operational artifacts outside the repository. Repository `.env*`, `.local/`, binaries, attachment bytes, dumps, and logs must remain ignored or external.
 
+Coordinated application backup and confirmed-empty-target restore use `scripts/backup-ppr.sh` and `scripts/restore-ppr.sh`; see `BACKUP_AND_RESTORE.md`. These scripts are explicit maintenance operations and are never part of rehost or automatic application startup.
+
 ## Production environment
 
 Create the production environment from the reviewed `.env.example`, preserving only the explicitly selected database URLs. Set at least:

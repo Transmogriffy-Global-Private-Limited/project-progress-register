@@ -85,6 +85,8 @@ git status --short
 
 `verify-live-progress.ps1 -EnvFile .env.local` extends the disposable zero-user flow through a project, geofence, task, camera photo, uploaded document, shared geotag, per-file verified/non-verified classification, immutable revision, authorized download, storage state, and audit. It writes bytes under a unique ignored `.local/progress-live-*` root for inspection. It is authored but must not run unless testing is explicitly resumed and the target is confirmed disposable and fully migrated.
 
+`verify-live-review.ps1 -EnvFile .env.local` extends the same guard through immutable task history, comments, Member acceptance denial, first/idempotent Admin acceptance, task-level accepted suggestions, two optimistic assessment versions, dashboard aggregates, complete authorized task timeline, full-audit authorization/pagination, and durable counts. It is authored but must not run unless testing is explicitly resumed and the fully migrated target contains zero users and is explicitly disposable.
+
 ## Expected readiness states
 
 - Liveness returns `200` whenever the process can serve HTTP.

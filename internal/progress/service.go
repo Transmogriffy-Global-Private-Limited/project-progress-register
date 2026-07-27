@@ -26,6 +26,10 @@ type Repository interface {
 	MarkAttachmentAvailable(context.Context, string, auditEvent) (time.Time, error)
 	MarkAttachmentFailed(context.Context, string, string, auditEvent) error
 	ListPendingAttachments(context.Context) ([]pendingAttachment, error)
+	ListComments(context.Context, string, bool, string, string, string) ([]Comment, error)
+	CreateComment(context.Context, string, bool, string, string, string, string, auditEvent) (Comment, error)
+	AcceptSuggestion(context.Context, string, bool, string, string, string, string, auditEvent) (AcceptedSuggestion, bool, error)
+	ListAcceptedSuggestions(context.Context, string, bool, string, string) ([]AcceptedSuggestion, error)
 	AppendAudit(context.Context, auditEvent) error
 }
 

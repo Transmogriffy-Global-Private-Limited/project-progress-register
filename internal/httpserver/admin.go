@@ -3,6 +3,7 @@ package httpserver
 import (
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
@@ -23,6 +24,38 @@ func adminListUsersAPIHandler(options Options) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"users": users})
+	}
+}
+
+func adminAuditAPIHandler(options Options) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, session, ok := authenticate(r, options)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "unauthenticated", "Authentication is required.")
+			return
+		}
+		limit := 0
+		if value := r.URL.Query().Get("limit"); value != "" {
+			parsed, err := strconv.Atoi(value)
+			if err != nil {
+				writeError(w, http.StatusUnprocessableEntity, "validation_failed", "limit: must be between 1 and 200")
+				return
+			}
+			limit = parsed
+		}
+		page, err := options.Identity.ListAudit(r.Context(), session.User, identity.AuditQuery{
+			Limit:       limit,
+			Cursor:      r.URL.Query().Get("cursor"),
+			Action:      r.URL.Query().Get("action"),
+			Outcome:     r.URL.Query().Get("outcome"),
+			ActorUserID: r.URL.Query().Get("actor_user_id"),
+			TargetType:  r.URL.Query().Get("target_type"),
+		}, auditContext(r))
+		if err != nil {
+			writeIdentityError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, page)
 	}
 }
 

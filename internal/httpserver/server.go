@@ -32,6 +32,8 @@ const (
 	PasswordAPIPath           = "/api/v1/auth/password"
 	AdminUsersAPIPath         = "/api/v1/admin/users"
 	AdminIdentityAuditAPIPath = "/api/v1/admin/audit/identity"
+	AdminAuditAPIPath         = "/api/v1/admin/audit"
+	DashboardAPIPath          = "/api/v1/dashboard"
 	ProjectsAPIPath           = "/api/v1/projects"
 	SessionCookie             = "ppr_session"
 )
@@ -57,6 +59,8 @@ func ContractRoutes() []Route {
 		{Method: http.MethodPatch, Path: AdminUsersAPIPath + "/{user_id}"},
 		{Method: http.MethodPost, Path: AdminUsersAPIPath + "/{user_id}/password-reset"},
 		{Method: http.MethodGet, Path: AdminIdentityAuditAPIPath},
+		{Method: http.MethodGet, Path: AdminAuditAPIPath},
+		{Method: http.MethodGet, Path: DashboardAPIPath},
 		{Method: http.MethodGet, Path: ProjectsAPIPath},
 		{Method: http.MethodPost, Path: ProjectsAPIPath},
 		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}"},
@@ -74,6 +78,14 @@ func ContractRoutes() []Route {
 		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}"},
 		{Method: http.MethodPatch, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}"},
 		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}/attachments/{attachment_id}/content"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}/comments"},
+		{Method: http.MethodPost, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}/comments"},
+		{Method: http.MethodPost, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}/comments/{comment_id}/accept"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/accepted-suggestions"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/assessment"},
+		{Method: http.MethodPut, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/assessment"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/assessments"},
+		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/timeline"},
 	}
 }
 
@@ -97,6 +109,7 @@ type Identity interface {
 	ResetPassword(context.Context, identity.User, string, identity.AuditContext) (identity.CredentialResult, error)
 	ChangePassword(context.Context, identity.User, identity.ChangePasswordInput, identity.AuditContext) error
 	ListIdentityAudit(context.Context, identity.User, identity.AuditContext) ([]identity.AuditRecord, error)
+	ListAudit(context.Context, identity.User, identity.AuditQuery, identity.AuditContext) (identity.AuditPage, error)
 }
 
 // ProjectAccess is the project authorization and policy boundary used by HTTP.
@@ -113,6 +126,11 @@ type ProjectAccess interface {
 	GetTask(context.Context, identity.User, string, string, projects.AuditContext) (projects.Task, error)
 	CreateTask(context.Context, identity.User, string, projects.CreateTaskInput, projects.AuditContext) (projects.Task, error)
 	UpdateTask(context.Context, identity.User, string, string, projects.UpdateTaskInput, projects.AuditContext) (projects.Task, error)
+	GetCurrentAssessment(context.Context, identity.User, string, string, projects.AuditContext) (*projects.Assessment, error)
+	ListAssessments(context.Context, identity.User, string, string, projects.AuditContext) ([]projects.Assessment, error)
+	SetAssessment(context.Context, identity.User, string, string, projects.SetAssessmentInput, projects.AuditContext) (projects.Assessment, error)
+	GetDashboard(context.Context, identity.User, projects.AuditContext) (projects.Dashboard, error)
+	GetTaskTimeline(context.Context, identity.User, string, string, projects.AuditContext) ([]projects.TimelineEvent, error)
 }
 
 type ProgressAccess interface {
@@ -121,6 +139,10 @@ type ProgressAccess interface {
 	Create(context.Context, identity.User, string, string, string, progress.CreateMetadata, []progress.UploadFile, progress.AuditContext) (progress.Update, error)
 	Update(context.Context, identity.User, string, string, string, progress.UpdateInput, progress.AuditContext) (progress.Update, error)
 	Download(context.Context, identity.User, string, string, string, string, progress.AuditContext) (progress.Download, error)
+	ListComments(context.Context, identity.User, string, string, string, progress.AuditContext) ([]progress.Comment, error)
+	CreateComment(context.Context, identity.User, string, string, string, progress.CreateCommentInput, progress.AuditContext) (progress.Comment, error)
+	AcceptSuggestion(context.Context, identity.User, string, string, string, string, progress.AuditContext) (progress.AcceptedSuggestion, bool, error)
+	ListAcceptedSuggestions(context.Context, identity.User, string, string, progress.AuditContext) ([]progress.AcceptedSuggestion, error)
 }
 
 // Options contains the explicit dependencies needed by the HTTP transport.
@@ -177,6 +199,8 @@ func New(options Options) (http.Handler, error) {
 	}))
 	mux.HandleFunc(AdminUsersAPIPath+"/", adminUserAPIRouter(options))
 	mux.HandleFunc(AdminIdentityAuditAPIPath, method(http.MethodGet, adminIdentityAuditAPIHandler(options)))
+	mux.HandleFunc(AdminAuditAPIPath, method(http.MethodGet, adminAuditAPIHandler(options)))
+	mux.HandleFunc(DashboardAPIPath, method(http.MethodGet, dashboardAPIHandler(options)))
 	mux.HandleFunc(ProjectsAPIPath, methodSwitch(map[string]http.HandlerFunc{
 		http.MethodGet: listProjectsAPIHandler(options), http.MethodPost: createProjectAPIHandler(options),
 	}))

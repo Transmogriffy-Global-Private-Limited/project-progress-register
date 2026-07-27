@@ -44,7 +44,11 @@ Migration `000004_task_register.sql` adds creator-owned tasks with Markdown sour
 
 Migration `000005_progress_updates_and_attachments.sql` adds current progress entries, immutable before/after revisions, upload-location/geofence snapshots, idempotency hashes, and attachment metadata/state. Progress creation locks the authorized task/project boundary, confirms the evaluated geofence is still current, commits pending metadata plus progress audit, then filesystem finalization is marked available in a second audited transaction. Revision insertion, current-content update, version increment, and audit share one transaction.
 
-On 2026-07-27, the operator-selected `pprdb` target was backed up, dropped, recreated, and migrated from zero to five applied migrations. Users and every business table were confirmed empty afterward. The guarded account/project/task/progress lifecycle verifiers were intentionally not run because they would repopulate the clean production database.
+Migration `000006_review_workflow.sql` adds immutable update comments, one-to-one accepted suggestions, and append-only versioned task assessments. Update/delete rejection triggers protect history. Suggestion acceptance locks the scoped comment and treats its unique acceptance as an idempotent result. Assessment append locks the scoped task, compares `expected_version` with the current maximum, inserts the next version, and commits its audit event in the same transaction.
+
+Migration `000007_task_timeline.sql` adds immutable complete task before/after revisions. Task update locks current state, validates responsibility, updates the task, appends the revision, and records audit in one transaction. The authorized task timeline unions those revisions with other durable domain/history tables; it is not a second store.
+
+On 2026-07-27, the operator-selected `pprdb` target was backed up, dropped, recreated, and migrated from zero to five applied migrations. Users and every business table were confirmed empty afterward. Migrations `000006` and `000007` are authored but unapplied in this local worktree. Guarded lifecycle verifiers are intentionally not run because they populate their target database.
 
 ## Local constraints and verification
 

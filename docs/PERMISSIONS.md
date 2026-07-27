@@ -1,6 +1,6 @@
 # Permissions
 
-Status: Identity enforcement is live-verified. Account/project/task/progress/attachment enforcement passes automated verification; database-live verification remains pending for the later slices.
+Status: Identity enforcement is live-verified. Account/project/task/progress/attachment/review/reporting enforcement passes automated verification; later database-live lifecycle verification remains pending.
 
 Authorization is enforced in backend application services and project-scoped persistence queries. Templates may hide unavailable actions for usability but are never an authorization boundary.
 
@@ -24,6 +24,7 @@ Authorization is enforced in backend application services and project-scoped per
 | View/download project attachment | Yes | Yes, with current project access and project policy |
 | View untrusted EXIF separately | Yes | No by default |
 | View full audit trail | Yes | No |
+| View complete task timeline | Yes | Yes, with current project access |
 
 ## Enforcement invariants
 
@@ -48,3 +49,7 @@ Authorization is enforced in backend application services and project-scoped per
 - Current project access permits reading all task progress, revisions, attachment metadata, and available bytes. Authorship controls mutation, not read visibility.
 - Every file requires reported upload coordinates. Geofence failure never grants verification and never denies accepted bytes; only a camera-source image with a server-verified location is labelled verified.
 - Attachment identifiers are resolved through project, task, and progress scope. Original names and opaque storage keys never grant access.
+- Comments are immutable and readable within current project scope. Admins and current Members may add them only to active projects.
+- Suggestion acceptance is a separate immutable Admin action. Repeating it returns the one existing acceptance and does not duplicate state or audit.
+- Current assessments are visible within current project scope. Only Admins append assessments or read full history; append uses the current durable version to reject stale writers.
+- The complete task timeline uses the same current project scope as task reads. It exposes domain chronology and metadata, not security-only audit request context.
