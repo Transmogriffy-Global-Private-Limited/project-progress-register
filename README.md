@@ -25,6 +25,7 @@ The backend feature set now contains account administration, project access, tas
 - Architecture: `docs/ARCHITECTURE.md`
 - Development plan: `docs/DEVELOPMENT_PLAN.md`
 - Local setup: `docs/LOCAL_DEVELOPMENT.md`
+- Complete frontend handoff: `docs/integrations/FRONTEND_INTEGRATION.md`
 - API contract source: `api/openapi/v1/openapi.yaml`
 
 ## Quick verification

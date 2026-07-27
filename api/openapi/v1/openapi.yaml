@@ -47,8 +47,10 @@ paths:
         '201':
           description: Initial Admin created.
           content: {application/json: {schema: {$ref: '#/components/schemas/UserResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '403': {$ref: '#/components/responses/BootstrapDenied'}
         '404': {$ref: '#/components/responses/BootstrapUnavailable'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/auth/login:
     post:
@@ -68,8 +70,10 @@ paths:
           headers:
             Set-Cookie: {schema: {type: string}, description: HttpOnly host-only ppr_session cookie with SameSite=Lax; Secure in production.}
           content: {application/json: {schema: {$ref: '#/components/schemas/SessionResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/InvalidCredentials'}
         '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/auth/session:
     get:
       tags: [Identity]
@@ -117,8 +121,10 @@ paths:
         '200':
           description: Password changed, all sessions revoked, and the cookie cleared.
           content: {application/json: {schema: {$ref: '#/components/schemas/PasswordChangedResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/CSRFInvalid'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/admin/users:
     get:
@@ -152,9 +158,11 @@ paths:
           headers:
             Cache-Control: {schema: {type: string, const: no-store}}
           content: {application/json: {schema: {$ref: '#/components/schemas/CredentialResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/admin/users/{user_id}:
     patch:
@@ -175,10 +183,12 @@ paths:
         '200':
           description: Account updated and target sessions revoked.
           content: {application/json: {schema: {$ref: '#/components/schemas/UserResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/admin/users/{user_id}/password-reset:
     post:
@@ -269,8 +279,10 @@ paths:
         '201':
           description: Project created.
           content: {application/json: {schema: {$ref: '#/components/schemas/ProjectResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/projects/{project_id}:
     get:
@@ -303,10 +315,12 @@ paths:
         '200':
           description: Project updated.
           content: {application/json: {schema: {$ref: '#/components/schemas/ProjectResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/projects/{project_id}/members:
     get:
@@ -375,10 +389,12 @@ paths:
         '200':
           description: New current geofence policy.
           content: {application/json: {schema: {$ref: '#/components/schemas/GeofenceResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/projects/{project_id}/tasks:
     get:
@@ -411,10 +427,12 @@ paths:
         '201':
           description: Task created with version one.
           content: {application/json: {schema: {$ref: '#/components/schemas/TaskResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/projects/{project_id}/tasks/{task_id}:
     get:
@@ -450,10 +468,12 @@ paths:
         '200':
           description: Task updated and version incremented.
           content: {application/json: {schema: {$ref: '#/components/schemas/TaskResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates:
     get:
@@ -495,14 +515,14 @@ paths:
               additionalProperties: false
               required: [metadata]
               properties:
-                metadata: {$ref: '#/components/schemas/CreateProgressMetadata'}
+                metadata:
+                  type: string
+                  description: JSON-encoded CreateProgressMetadata sent as one ordinary text form field, not a file part.
                 files:
                   type: array
                   maxItems: 25
                   description: Runtime-configured limit; default 10 and never above 25.
                   items: {type: string, format: binary}
-            encoding:
-              metadata: {contentType: application/json}
       responses:
         '201':
           description: Created update, or the identical result of an idempotent retry.
@@ -547,10 +567,12 @@ paths:
         content: {application/json: {schema: {$ref: '#/components/schemas/UpdateProgressRequest'}}}
       responses:
         '200': {description: Updated current entry with appended immutable revision., content: {application/json: {schema: {$ref: '#/components/schemas/ProgressUpdateResponse'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
   /api/v1/projects/{project_id}/tasks/{task_id}/progress-updates/{update_id}/attachments/{attachment_id}/content:
     get:
@@ -607,6 +629,7 @@ paths:
         content: {application/json: {schema: {$ref: '#/components/schemas/CreateCommentRequest'}, example: {content_markdown: Please confirm the concrete curing result.}}}
       responses:
         '201': {description: Comment and audit event committed atomically., content: {application/json: {schema: {$ref: '#/components/schemas/CommentResponse'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
@@ -676,6 +699,7 @@ paths:
         content: {application/json: {schema: {$ref: '#/components/schemas/SetAssessmentRequest'}, example: {verdict: needs_attention, remark_markdown: Drainage evidence is still pending., expected_version: 0}}}
       responses:
         '201': {description: New immutable assessment version and audit event committed., content: {application/json: {schema: {$ref: '#/components/schemas/AssessmentResponse'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}

@@ -48,7 +48,7 @@ Migration `000006_review_workflow.sql` adds immutable update comments, one-to-on
 
 Migration `000007_task_timeline.sql` adds immutable complete task before/after revisions. Task update locks current state, validates responsibility, updates the task, appends the revision, and records audit in one transaction. The authorized task timeline unions those revisions with other durable domain/history tables; it is not a second store.
 
-On 2026-07-27, the operator-selected `pprdb` target was backed up, dropped, recreated, and migrated from zero to five applied migrations. Users and every business table were confirmed empty afterward. Migrations `000006` and `000007` are authored but unapplied in this local worktree. Guarded lifecycle verifiers are intentionally not run because they populate their target database.
+On 2026-07-27, the operator-selected `pprdb` target was backed up, dropped, recreated, and initially migrated from zero through `000005`; users and every business table were confirmed empty afterward. Reviewed migrations `000006` and `000007` were later applied from a validated pre-migration backup, and production now reports seven applied and zero pending migrations. Guarded lifecycle verifiers remain intentionally unexecuted because they populate their target database and require an explicitly disposable environment.
 
 ## Local constraints and verification
 

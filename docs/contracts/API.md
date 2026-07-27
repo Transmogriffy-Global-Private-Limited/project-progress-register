@@ -1,6 +1,6 @@
 # HTTP API contract
 
-The authoritative machine-readable source is `../../api/openapi/v1/openapi.yaml`. This document owns causal semantics that are awkward to express in schema and identifies behavior whose database-live verification remains pending.
+The authoritative machine-readable source is `../../api/openapi/v1/openapi.yaml`. This document owns causal semantics that are awkward to express in schema and identifies behavior whose database-live verification remains pending. The self-contained browser handoff for a frontend team is `../integrations/FRONTEND_INTEGRATION.md`.
 
 ## Versioning and representation
 

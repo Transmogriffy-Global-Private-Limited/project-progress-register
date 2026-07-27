@@ -12,6 +12,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `guides/PROGRESS_EVIDENCE.md` — upload geotags, per-file verification, multipart retries, and recovery.
 - `guides/REVIEW_WORKFLOW.md` — comments, accepted suggestions, assessments, authorization, conflicts, and frontend recovery.
 - `guides/TASK_TIMELINE.md` — authorized audit-style task chronology, metadata, reconstruction, and trust boundary.
+- `integrations/FRONTEND_INTEGRATION.md` — self-contained “read this and build the FE” guide covering every browser workflow, endpoint, payload, response, permission, error, retry, and rendering rule.
 
 ## Architecture and operations
 
@@ -29,13 +30,13 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `DEVELOPMENT_PLAN.md` — canonical living plan and feature registry.
 - `plans/0001-foundation.md` — detailed foundation implementation plan.
 - `plans/0002-trusted-identity.md` — verified identity, session, CSRF, throttling, and audit plan.
-- `plans/0003-account-administration.md` — account-lifecycle implementation plan awaiting verification.
-- `plans/0004-project-access.md` — active project, membership, and versioned-geofence implementation plan.
-- `plans/0005-task-register.md` — active task ownership, responsibility, date, and safe-Markdown implementation plan.
-- `plans/0006-progress-updates-and-attachments.md` — active progress, evidence, revision, attachment-storage, and download plan.
+- `plans/0003-account-administration.md` — implemented account-lifecycle plan with guarded database-live verification pending.
+- `plans/0004-project-access.md` — implemented project, membership, and versioned-geofence plan with guarded database-live verification pending.
+- `plans/0005-task-register.md` — implemented task ownership, responsibility, date, and safe-Markdown plan with guarded database-live verification pending.
+- `plans/0006-progress-updates-and-attachments.md` — implemented progress, evidence, revision, attachment-storage, and download plan with guarded database-live verification pending.
 - `plans/0007-production-hosting.md` — `/backend` base path, production database reset, systemd/Caddy hosting, and public verification.
 - `plans/0008-review-comments-suggestions-assessments.md` — implemented immutable comments, accepted suggestions, and Admin assessment workflow awaiting deferred verification.
-- `plans/0009-reporting-audit-and-recovery.md` — active dashboard summaries, complete Admin audit, and guarded backup/restore plan.
+- `plans/0009-reporting-audit-and-recovery.md` — implemented/deployed dashboard, task timeline, complete Admin audit, and guarded backup/restore plan; restore drill pending.
 - `PROJECT_STATE.md` — implemented and verified reality.
 - `AI_CHANGELOG.md` — chronological agent-assisted change record.
 
@@ -51,4 +52,4 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `decisions/0008-backend-only-repository.md`
 - `decisions/0009-derived-sanitized-markdown.md`
 
-The authoritative machine-readable API contract is `../api/openapi/v1/openapi.yaml`. It is validated by `scripts/validate-openapi.ps1` and the full verification suite.
+The authoritative machine-readable API contract is `../api/openapi/v1/openapi.yaml`. It is validated by `scripts/validate-openapi.ps1` and the full verification suite. `scripts/verify-fe-integration-docs.ps1` also fails when an OpenAPI operation or path is absent from the complete frontend handoff.
