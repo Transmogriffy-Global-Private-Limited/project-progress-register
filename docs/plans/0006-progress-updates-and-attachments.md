@@ -1,6 +1,6 @@
 # Plan 0006 — Progress updates, revisions, evidence, and attachments
 
-Status: Implemented; automated verification passes, database-live verification pending
+Status: Implemented; automated and base-path correction verification pass, database-live verification pending
 
 ## Objective
 
@@ -48,12 +48,14 @@ Deliver the central backend diary workflow as one coherent slice: chronological 
 - Member edits preserve immutable revisions; optimistic conflicts return `409` without mutation.
 - Files are bounded, streamed, hashed, server-classified, privately stored, and never addressed by original filename.
 - Interrupted pending file finalization is recoverable and does not expose partial bytes as available.
-- Downloads require current project access and audit successful delivery intent without exposing storage paths.
+- Downloads require current project access, return a deployment-prefix-aware same-origin path, and audit successful delivery intent without exposing storage paths.
 - OpenAPI and human contracts are sufficient for the separate frontend to build the complete workflow.
 
 ## Verification
 
 Automated verification completed on 2026-07-27. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, the full repository verifier, race detection, and both loopback API-documentation smoke modes pass. Migration application and `verify-live-progress.ps1` remain pending because they require an explicitly disposable, fully migrated database with zero users.
+
+The later correction that moves `content_path` construction to the prefix-aware HTTP boundary passes focused HTTP coverage, the full repository verifier, and the prefixed loopback smoke state.
 
 - Focused evidence classification and boundary tests
 - Streaming storage/type/size/finalize/reconcile tests using temporary directories

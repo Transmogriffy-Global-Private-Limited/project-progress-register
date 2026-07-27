@@ -2,7 +2,7 @@
 
 ## Supported topology
 
-The production process runs as the unprivileged `ppr` system user. The Go server listens only on `127.0.0.1:18090`; Caddy owns public HTTPS for `ppr.transev.site` and forwards only `/backend/*`. The application receives the prefix unchanged because `BASE_PATH=/backend` makes routing, redirects, cookies, assets, and optional API documentation prefix-aware.
+The production process runs as the unprivileged `ppr` system user. The Go server listens only on `127.0.0.1:18090`; Caddy owns public HTTPS for `ppr.transev.site` and forwards only `/backend/*`. The application receives the prefix unchanged because `BASE_PATH=/backend` makes routing, redirects, cookies, assets, attachment response links, and optional API documentation prefix-aware.
 
 ```text
 Browser
@@ -83,6 +83,8 @@ curl --fail --silent --show-error --resolve ppr.transev.site:443:127.0.0.1 \
 ```
 
 Production API documentation defaults to disabled: in that state, `/backend/api/docs/` and `/backend/api/openapi/v1/openapi.yaml` must return `404`. When an operator explicitly sets `API_DOCS_ENABLED=true` and restarts PPR, both routes must return `200`. Unprefixed application routes must return `404` in either state. See `PROJECT_STATE.md` for the currently selected exposure.
+
+When enabled, the served OpenAPI document resolves its server-variable default to `/backend`, so Swagger's interactive requests use the public prefix automatically. Attachment metadata likewise returns `content_path` values beginning `/backend/api/v1/`; clients should use these same-origin paths directly rather than rebuilding or stripping the prefix.
 
 ## Rehost handler
 

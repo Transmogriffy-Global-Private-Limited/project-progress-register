@@ -7,7 +7,7 @@ Configuration is read from process environment when `ppr` starts. The applicatio
 | `APP_NAME` | Non-empty string | `Project Progress Register` | No | No | HTTP page and API-documentation titles. Keeps branding replaceable. |
 | `APP_ENV` | `development`, `test`, `production` | `development` | No | No | Runtime environment label. Production adds `Secure` to the session cookie. |
 | `HTTP_ADDR` | Loopback `host:port`; port 1024–65535 | `127.0.0.1:8080` | No | No | HTTP listener. Wildcard, LAN, public, malformed, and privileged addresses are rejected. IPv6 uses `[::1]:port`. |
-| `BASE_PATH` | Empty or canonical slash-prefixed URL path without trailing slash | Empty | No | No | Mounts every application route beneath one prefix. Production uses `/backend`; Caddy preserves this prefix. |
+| `BASE_PATH` | Empty or canonical slash-prefixed URL path without trailing slash | Empty | No | No | Mounts every application route, response link, and interactive API server beneath one prefix. Production uses `/backend`; Caddy preserves this prefix. |
 | `DATABASE_URL` | PostgreSQL connection URI | None | Yes | Yes | Runtime PostgreSQL pool and, by default, migrations. Never logged. |
 | `MIGRATION_DATABASE_URL` | PostgreSQL connection URI | `DATABASE_URL` | No | Yes | Migration command only. Production may supply a more privileged migration role while the server uses a restricted runtime role. |
 | `API_DOCS_ENABLED` | Exactly `true` or `false` | `false` | No | No | Registers or omits `/api/docs/`, `/api/docs`, and `/api/openapi/v1/openapi.yaml`. |
@@ -24,4 +24,4 @@ Configuration is read from process environment when `ppr` starts. The applicatio
 
 Do not commit `.env`, database passwords, or production connection strings. Set them in the process environment or the deployment’s established secret mechanism. `.env`, `.env.*`, and local runtime data are ignored; `.env.example` is intentionally tracked.
 
-The docs toggle defaults off because interactive execution and a complete schema expand the observable surface. Local development may explicitly enable it. Sensitive environments should keep it disabled unless access is intentionally permitted. `BASE_PATH` affects routes, redirects, template URLs, the session-cookie path, and Swagger addressing; changing it invalidates the old browser route and requires restart.
+The docs toggle defaults off because interactive execution and a complete schema expand the observable surface. Local development may explicitly enable it. Sensitive environments should keep it disabled unless access is intentionally permitted. `BASE_PATH` affects routes, redirects, template URLs, attachment response links, the session-cookie path, and Swagger addressing; changing it invalidates the old browser route and requires restart.

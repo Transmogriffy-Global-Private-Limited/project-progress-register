@@ -3,6 +3,7 @@ package openapiv1_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/api/openapi/v1"
@@ -40,5 +41,28 @@ func TestOpenAPIContract(t *testing.T) {
 		if !present {
 			t.Errorf("OpenAPI is missing %s %s", route.Method, route.Path)
 		}
+	}
+}
+
+func TestDocumentForBasePathResolvesOnlyServerDefault(t *testing.T) {
+	t.Parallel()
+
+	resolved, err := openapiv1.DocumentForBasePath("/backend")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(resolved), "        default: \"/backend\"") {
+		t.Fatal("resolved document does not default Swagger operations to /backend")
+	}
+	loader := openapi3.NewLoader()
+	document, err := loader.LoadFromData(resolved)
+	if err != nil {
+		t.Fatalf("parse resolved OpenAPI document: %v", err)
+	}
+	if err := document.Validate(context.Background()); err != nil {
+		t.Fatalf("validate resolved OpenAPI document: %v", err)
+	}
+	if strings.Contains(string(openapiv1.Document()), "        default: \"/backend\"") {
+		t.Fatal("resolving a deployment prefix mutated the authoritative document")
 	}
 }

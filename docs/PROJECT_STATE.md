@@ -23,7 +23,7 @@ As of 2026-07-27
 - Append-only authentication audit events correlated by random request ID and trusted client IP.
 - Server-rendered setup, login, authenticated home, and logout flows.
 - JSON bootstrap, login, session recovery, and logout endpoints with complete OpenAPI/Swagger coverage.
-- Optional canonical `BASE_PATH` mounting across application routes, redirects, compatibility pages, assets, cookies, OpenAPI server selection, and Swagger addressing.
+- Optional canonical `BASE_PATH` mounting across application routes, redirects, compatibility pages, assets, cookies, attachment response links, deployment-resolved OpenAPI server selection, and Swagger addressing.
 - Production `ppr.service` running as the unprivileged `ppr` user on `127.0.0.1:18090` with private attachment storage under `/var/lib/ppr/attachments`.
 - Validated and reloaded Caddy routing for `ppr.transev.site/backend/*`; the hostname root and unprefixed application routes are rejected.
 - Reset PostgreSQL 18.4 `pprdb` with five applied migrations, zero initial business rows, a generated least-privileged runtime login, and a verified pre-reset dump.
@@ -32,6 +32,8 @@ As of 2026-07-27
 ## Verification state
 
 Formatting, module tidiness, `go vet`, all Go tests, identity policy tests, HTTP cookie/CSRF/generic-error tests, OpenAPI validation and route coverage, full build, race-detector tests, PowerShell syntax, and live loopback smoke checks pass. The smoke check confirmed the redirected login page `200`, liveness `200`, unavailable-database readiness `503`, actual `127.0.0.1` listeners, and API documentation `200` when enabled versus `404` when disabled.
+
+The later hosted-contract correction now constructs every attachment `content_path` at the HTTP boundary with the configured `BASE_PATH`, and the raw served OpenAPI copy resolves its `basePath` server default for Swagger while leaving the committed specification authoritative. Focused tests, the full verifier, and all three root/prefixed loopback smoke states pass. The corrected binary has not been rehosted from this slice, so the live service still uses the earlier contract.
 
 The human explicitly approved the initially empty remote `pprdb` PostgreSQL 18.4 database for disposable production-target verification. Migration `000001` applied with one ledger entry and zero pending migrations. Live verification passed readiness, concurrent one-winner bootstrap, generic invalid/throttled authentication, successful login and session recovery, CSRF rejection, logout revocation, durable counts/actions, password/session-hash format, complete audit context, and audit update/delete rejection. Foundation and trusted identity are Verified.
 
@@ -61,10 +63,10 @@ Migrations `000002` through `000004` are applied to the clean production databas
 
 ## Step 06 implemented; database-live verification pending
 
-The local `anubhab-work` tree contains migration `000005`, chronological progress list/create/detail/update, immutable before/after revisions, shared upload-location/geofence snapshots, per-file verified/non-verified classification, image/document/video allowlists, SHA-256, private staging/final storage, pending reconciliation, authorized downloads, idempotent multipart creation, OpenAPI, tests, documentation, and `verify-live-progress.ps1`.
+The repository contains migration `000005`, chronological progress list/create/detail/update, immutable before/after revisions, shared upload-location/geofence snapshots, per-file verified/non-verified classification, image/document/video allowlists, SHA-256, private staging/final storage, pending reconciliation, authorized downloads, idempotent multipart creation, OpenAPI, tests, documentation, and `verify-live-progress.ps1`.
 
 Every file requires browser-reported coordinates. Only a camera-source image whose coordinates pass current accuracy/geofence policy is verified; existing images, documents, and videos remain non-verified but keep their geotag. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. Migration `000005` is applied; `verify-live-progress.ps1` remains unexecuted because it requires a disposable, fully migrated zero-user database and would populate production.
 
 ## Next slice
 
-Use `verify-live-progress.ps1` only on a separate explicitly disposable fully migrated zero-user database. Comments, accepted suggestions, and Admin assessments are the next larger backend slice.
+Separately rehost the locally verified contract correction when authorized. Use `verify-live-progress.ps1` only on a separate explicitly disposable fully migrated zero-user database. Comments, accepted suggestions, and Admin assessments remain the next larger backend slice.

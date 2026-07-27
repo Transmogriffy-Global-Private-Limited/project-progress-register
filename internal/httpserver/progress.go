@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -26,7 +27,7 @@ func progressUpdatesAPIHandler(options Options, projectID, taskID string) http.H
 				writeProgressError(w, err)
 				return
 			}
-			writeJSON(w, 200, map[string]any{"progress_updates": updates})
+			writeJSON(w, 200, map[string]any{"progress_updates": externalProgressUpdates(options, updates)})
 			return
 		}
 		session, ok := authenticatedWrite(w, r, options)
@@ -43,7 +44,7 @@ func progressUpdatesAPIHandler(options Options, projectID, taskID string) http.H
 			writeProgressError(w, err)
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{"progress_update": update})
+		writeJSON(w, http.StatusCreated, map[string]any{"progress_update": externalProgressUpdate(options, update)})
 	}
 }
 
@@ -60,7 +61,7 @@ func progressUpdateAPIHandler(options Options, projectID, taskID, updateID strin
 				writeProgressError(w, err)
 				return
 			}
-			writeJSON(w, 200, map[string]any{"progress_update": update})
+			writeJSON(w, 200, map[string]any{"progress_update": externalProgressUpdate(options, update)})
 			return
 		}
 		session, ok := authenticatedWrite(w, r, options)
@@ -76,8 +77,23 @@ func progressUpdateAPIHandler(options Options, projectID, taskID, updateID strin
 			writeProgressError(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"progress_update": update})
+		writeJSON(w, 200, map[string]any{"progress_update": externalProgressUpdate(options, update)})
 	}
+}
+
+func externalProgressUpdates(options Options, updates []progress.Update) []progress.Update {
+	for index := range updates {
+		updates[index] = externalProgressUpdate(options, updates[index])
+	}
+	return updates
+}
+
+func externalProgressUpdate(options Options, update progress.Update) progress.Update {
+	for index := range update.Attachments {
+		attachment := &update.Attachments[index]
+		attachment.ContentPath = externalPath(options, "/api/v1/projects/"+url.PathEscape(update.ProjectID)+"/tasks/"+url.PathEscape(update.TaskID)+"/progress-updates/"+url.PathEscape(update.ID)+"/attachments/"+url.PathEscape(attachment.ID)+"/content")
+	}
+	return update
 }
 
 func progressAttachmentDownloadHandler(options Options, projectID, taskID, updateID, attachmentID string) http.HandlerFunc {

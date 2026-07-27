@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -356,7 +355,6 @@ func (s *Service) renderUpdate(update *Update) error {
 		attachment := &update.Attachments[index]
 		attachment.SourceTrust = "browser_reported"
 		attachment.EmbeddedMetadataTrust = "untrusted"
-		attachment.ContentPath = fmt.Sprintf("/api/v1/projects/%s/tasks/%s/progress-updates/%s/attachments/%s/content", url.PathEscape(update.ProjectID), url.PathEscape(update.TaskID), url.PathEscape(update.ID), url.PathEscape(attachment.ID))
 	}
 	return nil
 }
