@@ -26,7 +26,7 @@ type Repository interface {
 	ListAssessments(context.Context, string, bool, string, string) ([]Assessment, error)
 	CreateAssessment(context.Context, string, bool, string, string, assessmentPersistenceInput, auditEvent) (Assessment, error)
 	GetDashboard(context.Context, string, bool) ([]DashboardProject, error)
-	GetTaskTimeline(context.Context, string, bool, string, string) ([]TimelineEvent, error)
+	GetTaskTimeline(context.Context, string, bool, string, string, timelinePersistenceQuery) ([]TimelineEvent, error)
 	AppendAudit(context.Context, auditEvent) error
 }
 

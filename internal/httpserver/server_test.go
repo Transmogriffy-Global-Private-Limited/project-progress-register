@@ -264,8 +264,8 @@ func (fakeProjects) SetAssessment(_ context.Context, actor identity.User, _, tas
 func (fakeProjects) GetDashboard(context.Context, identity.User, projects.AuditContext) (projects.Dashboard, error) {
 	return projects.Dashboard{Projects: []projects.DashboardProject{}}, nil
 }
-func (fakeProjects) GetTaskTimeline(context.Context, identity.User, string, string, projects.AuditContext) ([]projects.TimelineEvent, error) {
-	return []projects.TimelineEvent{}, nil
+func (fakeProjects) GetTaskTimeline(context.Context, identity.User, string, string, projects.TimelineQuery, projects.AuditContext) (projects.TimelinePage, error) {
+	return projects.TimelinePage{Timeline: []projects.TimelineEvent{}}, nil
 }
 
 func (fakeIdentity) BootstrapAvailable(context.Context) (bool, error) { return true, nil }

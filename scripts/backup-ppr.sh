@@ -46,7 +46,7 @@ if systemctl is-active --quiet ppr.service; then
   systemctl stop ppr.service
 fi
 
-pg_dump --format=custom --file="$temporary/database.dump" "$database_url"
+PGDATABASE="$database_url" pg_dump --format=custom --file="$temporary/database.dump"
 tar --create --gzip --file="$temporary/attachments.tar.gz" --directory="$ATTACHMENT_STORAGE_DIR" .
 (
   cd "$temporary"
