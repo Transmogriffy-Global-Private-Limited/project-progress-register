@@ -84,6 +84,20 @@ curl --fail --silent --show-error --resolve ppr.transev.site:443:127.0.0.1 \
 
 Production API documentation defaults to disabled: in that state, `/backend/api/docs/` and `/backend/api/openapi/v1/openapi.yaml` must return `404`. When an operator explicitly sets `API_DOCS_ENABLED=true` and restarts PPR, both routes must return `200`. Unprefixed application routes must return `404` in either state. See `PROJECT_STATE.md` for the currently selected exposure.
 
+## Rehost handler
+
+The installed `/usr/local/bin/rehost-ppr-service` is sourced from `scripts/rehost-ppr.sh`. `~/.bash_aliases` exposes the thin interactive handler `rehost-ppr`. It delegates the guarded service cycle to the host's shared `rehost-service`, then waits up to 30 seconds for database readiness before reporting success.
+
+```bash
+# Default 70-second delay, then follow logs.
+rehost-ppr
+
+# Immediate verified cycle without following logs.
+rehost-ppr -t 0 --no-tail
+```
+
+`--no-reload` skips `systemctl daemon-reload`. The handler does not build, migrate, alter Caddy, or change environment files; prepare those surfaces separately before rehosting.
+
 ## First Admin and bootstrap removal
 
 While the database has no users and `BOOTSTRAP_TOKEN` is configured, the compatibility setup page is `https://ppr.transev.site/backend/setup`. After creating the first Admin:

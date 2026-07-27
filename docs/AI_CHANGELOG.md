@@ -1,5 +1,13 @@
 # AI changelog
 
+## 2026-07-27 — PPR rehost handler
+
+Status: Implemented; live restart intentionally not executed
+
+- Added tracked `scripts/rehost-ppr.sh`, installed as `/usr/local/bin/rehost-ppr-service`, and exposed the thin `rehost-ppr` function through `~/.bash_aliases`.
+- The handler preserves the shared `rehost-service` delay/reload/log options and waits up to 30 seconds for `/backend/api/v1/health/ready` before reporting success.
+- Added production usage and behavior documentation. Static shell parsing, installed-source identity, alias discovery, and help output pass. The active production service was not restarted because this request authorized handler installation, not a live rehost cycle.
+
 ## 2026-07-27 — Production docs enabled and first Admin bootstrapped
 
 Status: Verified

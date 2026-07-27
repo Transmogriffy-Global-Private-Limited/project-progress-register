@@ -27,6 +27,7 @@ As of 2026-07-27
 - Production `ppr.service` running as the unprivileged `ppr` user on `127.0.0.1:18090` with private attachment storage under `/var/lib/ppr/attachments`.
 - Validated and reloaded Caddy routing for `ppr.transev.site/backend/*`; the hostname root and unprefixed application routes are rejected.
 - Reset PostgreSQL 18.4 `pprdb` with five applied migrations, zero initial business rows, a generated least-privileged runtime login, and a verified pre-reset dump.
+- Thin `rehost-ppr` interactive hook backed by a tracked installed handler that uses the shared guarded service cycle and waits for database readiness before success.
 
 ## Verification state
 
