@@ -117,7 +117,7 @@ Detailed plan: `plans/0006-progress-updates-and-attachments.md`.
 
 ### Feature: Comments and accepted suggestions
 
-Status: Implemented; verification pending
+Status: Implemented and deployed; database-live verification pending
 
 Phase: 7
 
@@ -129,7 +129,7 @@ Scope and acceptance: `plans/0008-review-comments-suggestions-assessments.md`.
 
 ### Feature: Admin assessments
 
-Status: Implemented; verification pending
+Status: Implemented and deployed; database-live verification pending
 
 Phase: 7
 
@@ -141,7 +141,7 @@ Scope and acceptance: `plans/0008-review-comments-suggestions-assessments.md`.
 
 ### Feature: Reporting APIs, audit access, and operational hardening
 
-Status: Implemented; verification pending
+Status: Implemented and deployed; database-live/restore verification pending
 
 Phase: 8
 
@@ -153,7 +153,7 @@ Scope and acceptance: `plans/0009-reporting-audit-and-recovery.md`.
 
 ### Feature: Production hosting at `/backend`
 
-Status: Verified locally; production rehost pending
+Status: Verified and deployed
 
 Phase: 8
 
@@ -175,7 +175,7 @@ Current implementation slice: Run database-live migrations/lifecycle verificatio
 
 Last completed slice: Dashboard summaries, full audit, authorized task timeline, and guarded backup/restore implemented; accumulated automated verification passed
 
-Next expected slice: Production migration/rehost only when separately authorized after verification
+Next expected slice: Database-live lifecycle verification and the coordinated restore drill on explicitly disposable targets
 
 Blocked by: None
 
@@ -198,11 +198,11 @@ Every slice normally runs formatting, focused tests, package tests, `go vet`, bu
 
 By explicit operator direction, implementation after the hosted-contract correction proceeded without executing tests until the backend feature set was complete. At completion, focused packages, OpenAPI validation/route coverage, the full formatter/tidy/vet/test/build verifier, race detection, Bash syntax, and all three loopback API-documentation/base-path smoke states passed. Database-live migration/lifecycle verification and the coordinated empty-target restore drill remain pending because no disposable targets were authorized in this pass.
 
-For Step 06, focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. All five migrations are applied to clean production `pprdb`; the guarded database-live verifier remains intentionally pending for a separate disposable target.
+For Step 06, focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. All seven migrations are applied to production `pprdb`; guarded data-creating database-live verifiers remain intentionally pending for a separate disposable target.
 
 For production hosting, prefix-focused tests, Linux formatting/tidiness/vet/tests/race/build checks, OpenAPI validation, systemd/Caddy validation, migration status, clean row counts, service/listener inspection, loopback liveness/readiness, route isolation, both docs-toggle states, Caddy reload, authoritative IPv4/IPv6 DNS, certificate inspection, and public HTTPS behavior pass. Docs are currently enabled by explicit operator request.
 
-The later hosted-contract correction has passing focused coverage for prefixed attachment `content_path` values and deployment-resolved OpenAPI server defaults. The full verifier and all three loopback smoke states pass, including root docs enabled/disabled and `/backend` docs enabled with unprefixed isolation. Production remains on the earlier binary until a separately authorized rehost, so hosted behavior is verified locally rather than claimed live.
+The hosted-contract correction has passing focused coverage for prefixed attachment `content_path` values and deployment-resolved OpenAPI server defaults. The full verifier and all three loopback smoke states pass, including root docs enabled/disabled and `/backend` docs enabled with unprefixed isolation. Production serves the corrected current binary; public TLS readiness and the raw schema's resolved `/backend` default are verified.
 
 ## V1 completion criteria
 

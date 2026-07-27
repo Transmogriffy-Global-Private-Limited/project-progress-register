@@ -119,7 +119,9 @@ The token is never stored in PostgreSQL. Losing it before bootstrap requires gen
 
 ## Rollback and recovery
 
-Before Caddy edits, keep a timestamped copy of the active Caddyfile. If proxy activation fails, restore that exact copy, validate it, and reload Caddy. Application rollback replaces `/opt/ppr/bin/ppr` with the previously retained binary and restarts only `ppr.service`.
+Before Caddy edits, keep a timestamped copy of the active Caddyfile. If proxy activation fails, restore that exact copy, validate it, and reload Caddy. For a code-only deployment whose migration ledger is unchanged, application rollback replaces `/opt/ppr/bin/ppr` with the previously retained binary and restarts only `ppr.service`.
+
+After applying a new migration, the old binary may reject the newer checksummed ledger and cannot be treated as a standalone rollback. A post-migration rollback must coordinate the pre-migration PostgreSQL dump, compatible attachment state, and `/opt/ppr/bin/ppr.previous`; it is intentionally not automatic.
 
 Database migrations are forward-only. Restoring the pre-reset dump replaces the reset database and therefore requires an explicit outage, exact-target validation, and coordinated attachment restoration. PostgreSQL and `/var/lib/ppr/attachments` must be backed up as one logical recovery point once real uploads begin.
 

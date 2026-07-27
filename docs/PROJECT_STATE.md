@@ -26,14 +26,14 @@ As of 2026-07-27
 - Optional canonical `BASE_PATH` mounting across application routes, redirects, compatibility pages, assets, cookies, attachment response links, deployment-resolved OpenAPI server selection, and Swagger addressing.
 - Production `ppr.service` running as the unprivileged `ppr` user on `127.0.0.1:18090` with private attachment storage under `/var/lib/ppr/attachments`.
 - Validated and reloaded Caddy routing for `ppr.transev.site/backend/*`; the hostname root and unprefixed application routes are rejected.
-- Reset PostgreSQL 18.4 `pprdb` with five applied migrations, zero initial business rows, a generated least-privileged runtime login, and a verified pre-reset dump.
+- Reset PostgreSQL 18.4 `pprdb` with zero initial business rows and a generated least-privileged runtime login, then advanced it through all seven current migrations with validated pre-reset and pre-migration dumps.
 - Thin `rehost-ppr` interactive hook backed by a tracked installed handler that tests and statically builds the selected PPR checkout, atomically installs the binary with one-version backup, uses the shared guarded service cycle, waits for database readiness, and rolls back failed deployments.
 
 ## Verification state
 
 Formatting, module tidiness, `go vet`, all Go tests, identity policy tests, HTTP cookie/CSRF/generic-error tests, OpenAPI validation and route coverage, full build, race-detector tests, PowerShell syntax, and live loopback smoke checks pass. The smoke check confirmed the redirected login page `200`, liveness `200`, unavailable-database readiness `503`, actual `127.0.0.1` listeners, and API documentation `200` when enabled versus `404` when disabled.
 
-The later hosted-contract correction now constructs every attachment `content_path` at the HTTP boundary with the configured `BASE_PATH`, and the raw served OpenAPI copy resolves its `basePath` server default for Swagger while leaving the committed specification authoritative. Focused tests, the full verifier, and all three root/prefixed loopback smoke states pass. The corrected binary has not been rehosted from this slice, so the live service still uses the earlier contract.
+The hosted-contract correction constructs every attachment `content_path` at the HTTP boundary with the configured `BASE_PATH`, and the raw served OpenAPI copy resolves its `basePath` server default for Swagger while leaving the committed specification authoritative. Focused tests, the full verifier, and all three root/prefixed loopback smoke states pass. Production now serves the corrected contract; the public raw schema resolves its default to `/backend`.
 
 The human explicitly approved the initially empty remote `pprdb` PostgreSQL 18.4 database for disposable production-target verification. Migration `000001` applied with one ledger entry and zero pending migrations. Live verification passed readiness, concurrent one-winner bootstrap, generic invalid/throttled authentication, successful login and session recovery, CSRF rejection, logout revocation, durable counts/actions, password/session-hash format, complete audit context, and audit update/delete rejection. Foundation and trusted identity are Verified.
 
@@ -66,18 +66,18 @@ The repository contains migration `000005`, chronological progress list/create/d
 
 Every file requires browser-reported coordinates. Only a camera-source image whose coordinates pass current accuracy/geofence policy is verified; existing images, documents, and videos remain non-verified but keep their geotag. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. Migration `000005` is applied; `verify-live-progress.ps1` remains unexecuted because it requires a disposable, fully migrated zero-user database and would populate production.
 
-## Review workflow implemented; verification deferred
+## Review workflow deployed; database-live verification pending
 
 The repository contains migration `000006`, immutable scoped progress comments, sanitized Markdown projections, separate one-to-one Admin suggestion acceptance, idempotent acceptance retry, task-level accepted-suggestion reads, current task assessment reads, Admin-only append/history, optimistic immutable assessment versions, transactional state/audit writes, seven REST/OpenAPI operations, focused service/route tests, documentation, and `verify-live-review.ps1`.
 
-The review service/HTTP coverage, OpenAPI validation/route coverage, full verifier, race detection, PowerShell parsing, Bash syntax, and loopback smoke states now pass. Migration `000006` and the data-creating live verifier remain unexecuted; no live service, production database, or hosted contract was changed by this slice.
+The review service/HTTP coverage, OpenAPI validation/route coverage, full verifier, race detection, PowerShell parsing, Bash syntax, and loopback smoke states now pass. Migration `000006` is applied in production and its routes are deployed. The data-creating live verifier remains unexecuted and requires a separately authorized disposable target.
 
-## Backend completion slice implemented; verification pending
+## Backend completion slice deployed; database-live/restore verification pending
 
 The repository now contains migration `000007` with atomic immutable task before/after revisions; an authorized oldest-first task timeline spanning task/progress revisions, attachment lifecycle/downloads, comments, accepted suggestions, and assessments; a neutral authorized dashboard; complete Admin audit with exact filters and opaque keyset pagination; coordinated maintenance backup and confirmed-empty-target restore scripts; complete OpenAPI/human/operator documentation; focused tests; and an extended guarded live verifier.
 
-After backend feature completion, focused identity/projects/progress/HTTP/migration packages, OpenAPI validation and route coverage, the full formatter/module-tidiness/vet/test/build verifier, all-package race detection, PowerShell and Bash syntax, and docs-enabled/docs-disabled/root/prefixed loopback smoke states pass. Migration `000007`, live workflow, backup, restore, deployment, rehost, and production mutation were not executed. Production remains on five applied migrations and the earlier hosted binary/contract.
+After backend feature completion, focused identity/projects/progress/HTTP/migration packages, OpenAPI validation and route coverage, the full formatter/module-tidiness/vet/test/build verifier, all-package race detection, PowerShell and Bash syntax, and docs-enabled/docs-disabled/root/prefixed loopback smoke states pass. Migration `000007` is applied and the current backend is deployed behind `/backend`; public readiness and the prefixed OpenAPI contract pass. The data-creating live workflow and coordinated empty-target restore drill remain pending on explicitly disposable targets.
 
 ## Next slice
 
-Use only explicitly disposable targets for migration/lifecycle verification and the coordinated restore drill. Production migration application and rehost remain separate authorized operations after those checks.
+Use only explicitly disposable targets for lifecycle verification and the coordinated restore drill. Production is current at seven applied migrations and the `fe0c7a4` source state.

@@ -1,5 +1,13 @@
 # AI changelog
 
+## 2026-07-27 — Review/reporting migrations and current backend deployed
+
+Status: Production migration and rehost verified; data-creating lifecycle/restore verification pending
+
+- Reviewed migrations `000006` and `000007`, created and validated a mode-`0600` custom-format pre-migration PostgreSQL dump, then applied both migrations. The current binary reports seven applied and zero pending migrations.
+- Rehosted the current `main` checkout through the guarded source-build handler. It passed its test/build gate, retained the prior binary at `/opt/ppr/bin/ppr.previous`, restarted only `ppr.service`, and passed database readiness. Because the ledger advanced, documented rollback coordinates that binary with the validated pre-migration dump rather than claiming binary-only rollback compatibility.
+- Verified the loopback listener, public TLS readiness, deployment-resolved OpenAPI `basePath` default, and authentication boundaries on the new dashboard and Admin audit routes. No Caddy, environment, or CORS policy change was required.
+
 ## 2026-07-27 — Backend completion slice implemented
 
 Status: Implemented and automated-verified; database-live/restore verification pending
