@@ -1,5 +1,13 @@
 # AI changelog
 
+## 2026-07-27 — Prefix-correct hosted response and Swagger contracts
+
+Status: Verified locally; production rehost pending
+
+- Moved attachment `content_path` construction to the HTTP presentation boundary so list, create, detail, and update responses include the configured `BASE_PATH` while storage and authorization remain in the progress service.
+- Kept the committed OpenAPI file authoritative and added a deterministic served representation that changes only the `basePath` server-variable default. Hosted Swagger therefore selects `/backend` by default while root-hosted development remains `/`.
+- Added focused Go regression coverage and a `/backend` loopback state to the existing smoke script. Focused contract tests, formatting, module tidiness, `go vet`, all Go tests, build, PowerShell syntax, and all three root/prefixed loopback smoke states pass. No rehost or database operation was performed.
+
 ## 2026-07-27 — Rehost now deploys current source changes
 
 Status: Implemented; live deployment cycle intentionally not executed
@@ -51,7 +59,7 @@ Verification:
 Compatibility and artifacts:
 
 - Root hosting remains the default when `BASE_PATH` is empty. Production now requires `/backend` and scopes its cookie accordingly.
-- Production environment, generated secrets, binary, database dump, attachment data, systemd/Caddy runtime files, and logs remain ignored or outside the repository. Nothing was committed or pushed.
+- Production environment, generated secrets, binary, database dump, attachment data, systemd/Caddy runtime files, and logs remain ignored or outside the repository. The hosting source and documentation were later committed and pushed; no runtime secrets or artifacts were included.
 
 ## 2026-07-27 — Progress updates and attachments plan approved
 

@@ -12,7 +12,7 @@ servers:
     variables:
       basePath:
         default: /
-        description: Use / for root hosting or the configured BASE_PATH, such as /backend.
+        description: The raw schema route resolves this default to the configured BASE_PATH, such as /backend.
 tags:
   - name: Health
     description: Process and dependency health used by operators and the reverse proxy.
@@ -1017,7 +1017,7 @@ components:
         embedded_metadata_trust: {type: string, const: untrusted}
         storage_state: {type: string, enum: [pending, available, failed]}
         failure_reason: {type: string, description: Empty unless recovery determines staged bytes are unavailable; never contains a filesystem path.}
-        content_path: {type: string, description: Authorized same-origin download path; never a filesystem path.}
+        content_path: {type: string, description: Authorized same-origin download path including the configured BASE_PATH; never a filesystem path.}
         created_at: {type: string, format: date-time}
         available_at:
           oneOf: [{type: string, format: date-time}, {type: 'null'}]

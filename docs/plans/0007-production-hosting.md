@@ -1,6 +1,6 @@
 # Plan 0007 — Production hosting at `/backend`
 
-Status: Verified
+Status: Verified locally; production rehost pending
 
 ## Objective
 
@@ -8,7 +8,7 @@ Run the verified Go backend as a hardened loopback-only systemd service, reset a
 
 ## Scope
 
-- Runtime `BASE_PATH` support across routes, redirects, compatibility pages, assets, session cookies, OpenAPI server selection, and embedded Swagger addressing.
+- Runtime `BASE_PATH` support across routes, redirects, compatibility pages, assets, session cookies, attachment response links, OpenAPI server selection, and embedded Swagger addressing.
 - Root-protected production configuration with generated database, CSRF, and bootstrap secrets.
 - A dedicated `ppr` operating-system user and least-privileged `ppr_runtime` PostgreSQL login.
 - Verified pre-reset database dump, exact-target recreation, all five migrations, and zero initial business rows.
@@ -20,7 +20,7 @@ Run the verified Go backend as a hardened loopback-only systemd service, reset a
 
 - Running guarded lifecycle verifiers against the clean production database.
 - Creating the first real Admin on the operator's behalf.
-- Exposing Swagger in production.
+- Permanently or unconditionally exposing Swagger in production; temporary exposure remains an explicit operator-controlled toggle.
 - Adding a product frontend, container, public Go listener, or automatic migration at startup.
 - Managing DNS records outside the already configured Caddy host.
 
@@ -29,6 +29,7 @@ Run the verified Go backend as a hardened loopback-only systemd service, reset a
 - Unprefixed application routes return `404`; `/backend` redirects to `/backend/`.
 - `ppr.service` runs as `ppr`, listens only on `127.0.0.1:18090`, and returns `200` for prefixed liveness/readiness.
 - The API-documentation toggle controls both public Swagger and raw schema routes; the operator has temporarily enabled them. `/backend/setup` is available only until the first Admin exists.
+- Attachment `content_path` values include `/backend`, and the served OpenAPI document selects `/backend` as Swagger's default server without changing canonical operation paths.
 - `pprdb` contains five applied migrations and zero initial users/business rows.
 - The runtime login has DML-only application access while migrations use the privileged URL copied from the operator's `.env`.
 - Caddy's full active configuration validates and preserves the prefix to the loopback upstream.
@@ -39,3 +40,5 @@ Run the verified Go backend as a hardened loopback-only systemd service, reset a
 Passed: focused prefix tests, formatting, module tidiness, vet, all Go tests, race tests, static build, OpenAPI validation/route coverage, systemd validation, Caddy template and active-config validation, migration status, clean row counts, service state, listener inspection, loopback health, disabled-doc routes, setup route, Caddy reload, HTTP-to-HTTPS hostname redirect, adapted upstream inspection, authoritative IPv4/IPv6 DNS, Let's Encrypt issuance, and public HTTPS health/route isolation over both address families.
 
 The first certificate attempt correctly failed while DNS was absent. After the operator published A `72.61.245.64` and AAAA `2a02:4780:12:5ec8::1`, both authoritative records matched the VPS and reloading Caddy completed certificate issuance and public verification.
+
+Later review found that attachment response links and the OpenAPI server-variable default still pointed at the unprefixed root. The transport and served contract are corrected. Focused tests, the full repository verifier, and root/prefixed loopback smoke states pass. The corrected binary has not been rehosted in this slice, so production still serves the earlier contract until that separately authorized operation occurs.

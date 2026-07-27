@@ -147,13 +147,13 @@ Objective: Complete useful dashboard query contracts, full Admin audit access, b
 
 ### Feature: Production hosting at `/backend`
 
-Status: Implemented
+Status: Verified locally; production rehost pending
 
 Phase: 8
 
 Depends on: foundation, trusted identity, and production migration safety.
 
-Objective: Run the backend durably behind Caddy at `ppr.transev.site/backend` with a loopback-only service, clean migrated PostgreSQL state, protected secrets, private attachments, recovery evidence, and prefix-correct contracts.
+Objective: Run the backend durably behind Caddy at `ppr.transev.site/backend` with a loopback-only service, clean migrated PostgreSQL state, protected secrets, private attachments, recovery evidence, and prefix-correct routes, response links, and interactive contracts.
 
 Verification: Application, database, systemd, listener, loopback health, route isolation, Caddy validation/reload, authoritative IPv4/IPv6 DNS, Let's Encrypt certificate, and public HTTPS behavior pass.
 
@@ -161,13 +161,13 @@ Detailed plan: `plans/0007-production-hosting.md`.
 
 ## Current execution
 
-Current phase: Reporting and operational hardening
+Current phase: Review
 
-Active feature: Production hosting at `/backend`
+Active feature: None
 
-Current implementation slice: Production hosting, first-Admin bootstrap, bootstrap closure, and temporary docs enablement verified
+Current implementation slice: None
 
-Last completed slice: Production database reset/migration, prefix support, protected configuration, systemd service, and Caddy activation
+Last completed slice: Prefix-aware attachment response links and deployment-resolved Swagger server selection, verified locally
 
 Next expected slice: Comments, accepted suggestions, and Admin assessments
 
@@ -194,6 +194,8 @@ Every slice normally runs formatting, focused tests, package tests, `go vet`, bu
 For Step 06, focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. All five migrations are applied to clean production `pprdb`; the guarded database-live verifier remains intentionally pending for a separate disposable target.
 
 For production hosting, prefix-focused tests, Linux formatting/tidiness/vet/tests/race/build checks, OpenAPI validation, systemd/Caddy validation, migration status, clean row counts, service/listener inspection, loopback liveness/readiness, route isolation, both docs-toggle states, Caddy reload, authoritative IPv4/IPv6 DNS, certificate inspection, and public HTTPS behavior pass. Docs are currently enabled by explicit operator request.
+
+The later hosted-contract correction has passing focused coverage for prefixed attachment `content_path` values and deployment-resolved OpenAPI server defaults. The full verifier and all three loopback smoke states pass, including root docs enabled/disabled and `/backend` docs enabled with unprefixed isolation. Production remains on the earlier binary until a separately authorized rehost, so hosted behavior is verified locally rather than claimed live.
 
 ## V1 completion criteria
 

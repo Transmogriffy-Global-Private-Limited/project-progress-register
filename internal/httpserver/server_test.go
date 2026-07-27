@@ -174,6 +174,12 @@ func TestBasePathScopesRoutesRedirectsAssetsDocsAndCookies(t *testing.T) {
 			t.Fatalf("prefixed %s = %d", path, response.Code)
 		}
 	}
+
+	schema := httptest.NewRecorder()
+	handler.ServeHTTP(schema, httptest.NewRequest(http.MethodGet, "/backend"+OpenAPIPath, nil))
+	if !strings.Contains(schema.Body.String(), `default: "/backend"`) {
+		t.Fatal("prefixed OpenAPI did not select /backend as the default server")
+	}
 }
 
 type fakeIdentity struct{ currentUser *identity.User }
@@ -185,7 +191,7 @@ func (fakeProgress) List(context.Context, identity.User, string, string, progres
 	return []progress.Update{}, nil
 }
 func (fakeProgress) Get(_ context.Context, _ identity.User, projectID, taskID, updateID string, _ progress.AuditContext) (progress.Update, error) {
-	return progress.Update{ID: updateID, ProjectID: projectID, TaskID: taskID, ContentMarkdown: "Progress", ContentHTML: "<p>Progress</p>", Version: 1, Attachments: []progress.Attachment{}, Revisions: []progress.Revision{}}, nil
+	return progress.Update{ID: updateID, ProjectID: projectID, TaskID: taskID, ContentMarkdown: "Progress", ContentHTML: "<p>Progress</p>", Version: 1, Attachments: []progress.Attachment{{ID: "66666666-6666-4666-8666-666666666666"}}, Revisions: []progress.Revision{}}, nil
 }
 func (fakeProgress) Create(_ context.Context, actor identity.User, projectID, taskID, _ string, metadata progress.CreateMetadata, _ []progress.UploadFile, _ progress.AuditContext) (progress.Update, error) {
 	return progress.Update{ID: "55555555-5555-4555-8555-555555555555", ProjectID: projectID, TaskID: taskID, ContentMarkdown: metadata.ContentMarkdown, CreatedBy: progress.Actor{UserID: actor.ID, Username: actor.Username}, Version: 1, Attachments: []progress.Attachment{}, Revisions: []progress.Revision{}}, nil

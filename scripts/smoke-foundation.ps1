@@ -9,13 +9,16 @@ function Test-FoundationState {
         [bool]$DocsEnabled,
 
         [Parameter(Mandatory)]
-        [int]$Port
+        [int]$Port,
+
+        [string]$BasePath = ''
     )
 
     $env:APP_ENV = 'test'
     $env:HTTP_ADDR = "127.0.0.1:$Port"
     $env:DATABASE_URL = 'postgres://ppr_test:unused@127.0.0.1:1/ppr_test?sslmode=disable&connect_timeout=1'
     $env:API_DOCS_ENABLED = $DocsEnabled.ToString().ToLowerInvariant()
+    $env:BASE_PATH = $BasePath
     $env:SESSION_CSRF_KEY = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
 
     if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) {
@@ -30,7 +33,7 @@ function Test-FoundationState {
         $started = $false
         foreach ($attempt in 1..30) {
             try {
-                $response = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/v1/health/live" -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 1
+                $response = Invoke-WebRequest -Uri "http://127.0.0.1:$Port$BasePath/api/v1/health/live" -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 1
                 if ($response.StatusCode -eq 200) {
                     $started = $true
                     break
@@ -43,11 +46,11 @@ function Test-FoundationState {
         }
         if (-not $started) { throw "smoke server on port $Port did not start" }
 
-        $homeResponse = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/" -UseBasicParsing -SkipHttpErrorCheck
-        $live = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/v1/health/live" -UseBasicParsing -SkipHttpErrorCheck
-        $ready = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/v1/health/ready" -UseBasicParsing -SkipHttpErrorCheck
-        $schema = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/openapi/v1/openapi.yaml" -UseBasicParsing -SkipHttpErrorCheck
-        $docs = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/docs/" -UseBasicParsing -SkipHttpErrorCheck
+        $homeResponse = Invoke-WebRequest -Uri "http://127.0.0.1:$Port$BasePath/" -UseBasicParsing -SkipHttpErrorCheck
+        $live = Invoke-WebRequest -Uri "http://127.0.0.1:$Port$BasePath/api/v1/health/live" -UseBasicParsing -SkipHttpErrorCheck
+        $ready = Invoke-WebRequest -Uri "http://127.0.0.1:$Port$BasePath/api/v1/health/ready" -UseBasicParsing -SkipHttpErrorCheck
+        $schema = Invoke-WebRequest -Uri "http://127.0.0.1:$Port$BasePath/api/openapi/v1/openapi.yaml" -UseBasicParsing -SkipHttpErrorCheck
+        $docs = Invoke-WebRequest -Uri "http://127.0.0.1:$Port$BasePath/api/docs/" -UseBasicParsing -SkipHttpErrorCheck
         $listener = Get-NetTCPConnection -State Listen -LocalPort $Port | Select-Object -First 1
 
         if ($homeResponse.StatusCode -ne 200 -or $live.StatusCode -ne 200 -or $ready.StatusCode -ne 503) {
@@ -56,6 +59,14 @@ function Test-FoundationState {
         $expectedDocsStatus = if ($DocsEnabled) { 200 } else { 404 }
         if ($schema.StatusCode -ne $expectedDocsStatus -or $docs.StatusCode -ne $expectedDocsStatus) {
             throw "unexpected docs status: schema=$($schema.StatusCode) docs=$($docs.StatusCode) expected=$expectedDocsStatus"
+        }
+        $schemaText = if ($schema.Content -is [byte[]]) { [Text.Encoding]::UTF8.GetString($schema.Content) } else { [string]$schema.Content }
+        if ($DocsEnabled -and $BasePath -and $schemaText -notmatch ('default:\s+["'']?' + [regex]::Escape($BasePath) + '["'']?')) {
+            throw "OpenAPI server default did not resolve to $BasePath"
+        }
+        if ($BasePath) {
+            $unprefixed = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/v1/health/live" -UseBasicParsing -SkipHttpErrorCheck
+            if ($unprefixed.StatusCode -ne 404) { throw "unprefixed liveness returned $($unprefixed.StatusCode), expected 404" }
         }
         if ($listener.LocalAddress -ne '127.0.0.1') {
             throw "server listened on unexpected address $($listener.LocalAddress)"
@@ -73,6 +84,7 @@ function Test-FoundationState {
             Docs        = $docs.StatusCode
             Listener    = $listener.LocalAddress
             Port        = $listener.LocalPort
+            BasePath    = $BasePath
         }
     }
     finally {
@@ -86,3 +98,4 @@ function Test-FoundationState {
 .\scripts\build.ps1
 Test-FoundationState -DocsEnabled $true -Port 18080
 Test-FoundationState -DocsEnabled $false -Port 18081
+Test-FoundationState -DocsEnabled $true -Port 18082 -BasePath '/backend'

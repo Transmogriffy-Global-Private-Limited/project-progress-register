@@ -23,7 +23,7 @@ Browser
 
 The current foundation contains one `ppr` binary with explicit `serve`, `migrate up`, and `migrate status` commands.
 
-Production runs that binary as the unprivileged `ppr` system user through `ppr.service`. Caddy preserves `/backend` when proxying; the application owns prefix-aware routing, redirects, compatibility-page links, Swagger addressing, and the `/backend/` session-cookie path. The hostname root and every unprefixed application route remain unavailable.
+Production runs that binary as the unprivileged `ppr` system user through `ppr.service`. Caddy preserves `/backend` when proxying; the application owns prefix-aware routing, redirects, compatibility-page links, attachment response links, Swagger addressing, and the `/backend/` session-cookie path. The hostname root and every unprefixed application route remain unavailable.
 
 ## Package ownership
 
@@ -78,7 +78,7 @@ Runtime and migration database URLs can differ so production can give the runtim
 
 The backend uses `net/http`; JSON APIs and OpenAPI are the product integration boundary. The existing minimal `html/template` authentication/diagnostic shell remains for compatibility but receives no new product features. `BASE_PATH` optionally mounts the complete transport beneath one canonical prefix without rewriting operation paths. Request middleware creates a random correlation ID and accepts `X-Forwarded-For` only from a loopback peer, matching the Caddy boundary.
 
-`api/openapi/v1/openapi.yaml` is specification-first and authoritative for the implemented JSON API. The same embedded bytes power validation, the raw schema route, and Swagger UI. `API_DOCS_ENABLED=false` prevents both documentation routes from being registered.
+`api/openapi/v1/openapi.yaml` is specification-first and authoritative for the implemented JSON API. The embedded source powers validation, the raw schema route, and Swagger UI. At route construction the server creates a defensive copy and resolves only the OpenAPI `basePath` server-variable default to the configured deployment prefix; operation paths and all schemas remain the committed bytes. `API_DOCS_ENABLED=false` prevents both documentation routes from being registered.
 
 ## Dependencies
 

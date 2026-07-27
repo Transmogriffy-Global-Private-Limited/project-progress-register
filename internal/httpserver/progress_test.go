@@ -2,11 +2,38 @@ package httpserver
 
 import (
 	"bytes"
+	"encoding/json"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+func TestProgressAttachmentContentPathUsesDeploymentBasePath(t *testing.T) {
+	handler := testHandlerAtBasePath(t, false, nil, "/backend")
+	path := "/backend" + ProjectsAPIPath + "/" + testProjectID + "/tasks/" + testTaskID + "/progress-updates/55555555-5555-4555-8555-555555555555"
+	request := httptest.NewRequest(http.MethodGet, path, nil)
+	request.AddCookie(&http.Cookie{Name: SessionCookie, Value: "session-token"})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("response=%d %s", response.Code, response.Body.String())
+	}
+	var payload struct {
+		ProgressUpdate struct {
+			Attachments []struct {
+				ContentPath string `json:"content_path"`
+			} `json:"attachments"`
+		} `json:"progress_update"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	expected := "/backend/api/v1/projects/" + testProjectID + "/tasks/" + testTaskID + "/progress-updates/55555555-5555-4555-8555-555555555555/attachments/66666666-6666-4666-8666-666666666666/content"
+	if len(payload.ProgressUpdate.Attachments) != 1 || payload.ProgressUpdate.Attachments[0].ContentPath != expected {
+		t.Fatalf("content_path=%q, expected %q", payload.ProgressUpdate.Attachments[0].ContentPath, expected)
+	}
+}
 
 func TestProgressMultipartContract(t *testing.T) {
 	handler := testHandler(t, false, nil)

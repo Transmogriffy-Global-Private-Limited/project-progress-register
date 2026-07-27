@@ -183,7 +183,11 @@ func New(options Options) (http.Handler, error) {
 	mux.HandleFunc(ProjectsAPIPath+"/", projectAPIRouter(options))
 
 	if options.APIDocsEnabled {
-		mux.HandleFunc(OpenAPIPath, method(http.MethodGet, openAPIHandler))
+		openAPIDocument, err := openapiv1.DocumentForBasePath(options.BasePath)
+		if err != nil {
+			return nil, fmt.Errorf("prepare OpenAPI document: %w", err)
+		}
+		mux.HandleFunc(OpenAPIPath, method(http.MethodGet, openAPIHandler(openAPIDocument)))
 		docsHandler := http.Handler(v5emb.New(options.AppName+" API", externalPath(options, OpenAPIPath), externalPath(options, APIDocsPath)))
 		if options.BasePath != "" {
 			docsHandler = prependRequestPath(options.BasePath, docsHandler)
@@ -264,11 +268,12 @@ func readinessHandler(options Options) http.HandlerFunc {
 	}
 }
 
-func openAPIHandler(w http.ResponseWriter, r *http.Request) {
-	document := openapiv1.Document()
-	w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	http.ServeContent(w, r, "openapi.yaml", time.Time{}, strings.NewReader(string(document)))
+func openAPIHandler(document []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		http.ServeContent(w, r, "openapi.yaml", time.Time{}, strings.NewReader(string(document)))
+	}
 }
 
 func method(expected string, next http.HandlerFunc) http.HandlerFunc {

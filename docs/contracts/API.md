@@ -70,7 +70,7 @@ Markdown source fields are authoritative. Project `description_html` and task `g
 
 File bytes require `metadata.location` with finite latitude/longitude and positive accuracy. Outside-geofence, inaccurate, and no-geofence results are accepted and stored. Only an attachment with `media_kind=image`, browser-reported `source=camera`, and location status `verified` receives attachment `verification_status=verified`. Existing images, documents, and videos remain `non_verified` while retaining that geotag. See `../guides/PROGRESS_EVIDENCE.md`.
 
-Each file is streamed, bounded, allowlisted by detected bytes, SHA-256 hashed, and stored through pending-to-available recovery. Responses expose `content_path`, never a storage key. Pending recovery returns `503 attachment_pending`; irrecoverably missing bytes return `410 attachment_unavailable`. The client retries a pending create using the same idempotency key. Reusing a key with different metadata or file hashes returns `409`.
+Each file is streamed, bounded, allowlisted by detected bytes, SHA-256 hashed, and stored through pending-to-available recovery. Responses expose a same-origin `content_path` that includes the configured `BASE_PATH`, never a storage key. With production `BASE_PATH=/backend`, download paths begin `/backend/api/v1/`. Pending recovery returns `503 attachment_pending`; irrecoverably missing bytes return `410 attachment_unavailable`. The client retries a pending create using the same idempotency key. Reusing a key with different metadata or file hashes returns `409`.
 
 Successful downloads set attachment disposition, detected MIME, `private, no-store`, and `nosniff`. Audit records progress creation/edit, attachment availability, download intent, and scoped denial without storing Markdown, file bytes, geolocation, or filesystem paths in audit details.
 
@@ -126,13 +126,13 @@ Success is `200` with `{"status":"ready"}`. Any dependency or schema failure is 
 
 When `API_DOCS_ENABLED=true`:
 
-- `GET /api/openapi/v1/openapi.yaml` serves the exact embedded authoritative schema.
+- `GET /api/openapi/v1/openapi.yaml` serves the embedded authoritative schema with only its server-variable default resolved to the configured `BASE_PATH`.
 - `GET /api/docs/` serves an embedded Swagger UI configured to read that route.
 - `GET /api/docs` redirects to the canonical trailing-slash viewer route.
 
 When false, none of these routes are registered and they return `404`. The toggle does not affect ordinary application or health routes.
 
-With `BASE_PATH=/backend`, the same paths are externally `/backend/api/openapi/v1/openapi.yaml` and `/backend/api/docs/`. The OpenAPI `basePath` server variable describes this deployment prefix without duplicating operation paths.
+With `BASE_PATH=/backend`, the same paths are externally `/backend/api/openapi/v1/openapi.yaml` and `/backend/api/docs/`. The served OpenAPI `basePath` server variable defaults to `/backend`, so Swagger executes against the mounted API without duplicating operation paths in the committed contract.
 
 ## Common transport behavior
 
