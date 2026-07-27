@@ -1,5 +1,14 @@
 # AI changelog
 
+## 2026-07-27 — Frontend handoff OpenAPI corrections deployed
+
+Status: Production rehost verified
+
+- Confirmed the handoff slice adds no migration, runtime configuration, dependency, systemd, Caddy, or rehost-handler requirement. Production remains at seven applied and zero pending migrations.
+- Verified all 39 OpenAPI operation IDs, all 29 paths, and required browser-integration guidance; formatting, tidiness, vet, all tests, race detection, OpenAPI validation, and the stripped static build pass. PowerShell is unavailable on this VPS, so the new documentation verifier's equivalent checks were executed in Bash.
+- Rehosted current `main` through the guarded source-build handler and verified loopback plus public IPv4/IPv6 readiness. The hosted raw schema now includes the corrected JSON transport errors and text-field multipart metadata contract.
+- Production logs also confirm the same-origin development proxy path reaches the backend: login and subsequent session recovery returned `200` before this rehost. No CORS relaxation was required.
+
 ## 2026-07-27 — Complete frontend integration handoff
 
 Status: Implemented and verified

@@ -75,7 +75,7 @@ Detailed plan: `plans/0003-account-administration.md`.
 
 ### Feature: Projects, membership, and geofences
 
-Status: Implemented
+Status: Implemented and verified; OpenAPI corrections deployed
 
 Phase: 4
 
@@ -187,7 +187,7 @@ Active feature: Deferred backend verification and completion reconciliation
 
 Current implementation slice: Run database-live migrations/lifecycle verification and an empty-target restore drill on explicitly disposable targets
 
-Last completed slice: Reconciled deployed-state documentation and added the exhaustive verified frontend integration handoff for all 39 operations
+Last completed slice: Reconciled deployed-state documentation, added the exhaustive verified frontend integration handoff for all 39 operations, and deployed its corrected embedded OpenAPI contract
 
 Next expected slice: Database-live lifecycle verification and the coordinated restore drill on explicitly disposable targets
 
