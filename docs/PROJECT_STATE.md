@@ -28,7 +28,9 @@ As of 2026-07-27
 
 Formatting, module tidiness, `go vet`, all Go tests, identity policy tests, HTTP cookie/CSRF/generic-error tests, OpenAPI validation and route coverage, full build, race-detector tests, PowerShell syntax, and live loopback smoke checks pass. The smoke check confirmed the redirected login page `200`, liveness `200`, unavailable-database readiness `503`, actual `127.0.0.1` listeners, and API documentation `200` when enabled versus `404` when disabled.
 
-No live PostgreSQL migration was applied because no explicitly disposable development/test database or credentials were identified. PostgreSQL is listening at local port 5432, but unauthenticated read-only connection attempts correctly failed. Database integration is implemented, unit-tested, and failure-path smoke-tested; successful live migration, bootstrap, login, logout, audit, and ready-state behavior remain unverified. Foundation and identity are therefore Implemented, not Verified.
+The human explicitly approved the initially empty remote `pprdb` PostgreSQL 18.4 database for disposable production-target verification. Migration `000001` applied with one ledger entry and zero pending migrations. Live verification passed readiness, concurrent one-winner bootstrap, generic invalid/throttled authentication, successful login and session recovery, CSRF rejection, logout revocation, durable counts/actions, password/session-hash format, complete audit context, and audit update/delete rejection. Foundation and trusted identity are Verified.
+
+The live verifier left one temporary Admin, one revoked session, one throttle row, and 11 authentication audit events in `pprdb`. The human stated that this production database will be reset before real use. `.env.local` still needs a persistent valid `SESSION_CSRF_KEY` and real one-time `BOOTSTRAP_TOKEN`; the verifier intentionally used ephemeral in-memory values.
 
 ## Not implemented
 
@@ -39,4 +41,4 @@ No live PostgreSQL migration was applied because no explicitly disposable develo
 
 ## Next slice
 
-Run the identity migration and success-path checks on an explicitly approved safe PostgreSQL database, then implement website account administration with final-enabled-Admin enforcement.
+Reset the disposable verification data and configure production secrets before deployment. The next implementation feature is website account administration with final-enabled-Admin enforcement.

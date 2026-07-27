@@ -76,16 +76,16 @@ type AuditEvent struct {
 
 // BootstrapInput creates the one and only initial Admin.
 type BootstrapInput struct {
-	BootstrapToken string
-	Username       string
-	Email          string
-	Password       string
+	BootstrapToken string `json:"bootstrap_token"`
+	Username       string `json:"username"`
+	Email          string `json:"email"`
+	Password       string `json:"password"`
 }
 
 // LoginInput authenticates by normalized username or email.
 type LoginInput struct {
-	Identifier string
-	Password   string
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
 }
 
 // LoginResult contains the raw token only at the transport boundary.

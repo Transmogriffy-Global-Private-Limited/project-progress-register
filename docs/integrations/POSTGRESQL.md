@@ -40,4 +40,4 @@ Identity transitions keep each durable fact and its audit event together: bootst
 
 The application connects outbound to PostgreSQL and does not alter the database listener. Local PostgreSQL must remain loopback-only. Migration commands modify the database named by the environment, so inspect the URL and status before applying.
 
-Foundation unit tests validate migration ordering, naming, checksums, and error cases without touching a database. A live migration integration test is intentionally deferred until a repository-specific disposable test-database workflow is approved; no existing database is assumed disposable.
+Unit tests validate migration ordering, naming, checksums, and error cases without touching a database. On 2026-07-27, the human explicitly approved the initially empty remote `pprdb` PostgreSQL 18.4 target as disposable; migration and complete live identity verification passed. `scripts/verify-live-identity.ps1` preserves this repeatable flow but refuses any database with an existing user and must be run only with explicit authorization because it creates temporary identity and audit data.

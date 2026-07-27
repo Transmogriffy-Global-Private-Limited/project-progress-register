@@ -1,6 +1,6 @@
 # Plan 0002 — Trusted identity and audit foundation
 
-Status: Implemented; live PostgreSQL success-path verification pending
+Status: Verified
 
 ## Objective
 
@@ -97,4 +97,6 @@ Records include actor when known, target when safe, outcome, server timestamp, r
 
 The migration, shared identity service, PostgreSQL transitions, HTML setup/login/logout pages, authenticated home, JSON API, session cookie, CSRF enforcement, generic failures, request correlation, OpenAPI contract, and focused tests are implemented. Formatting, vet, all unit/HTTP/contract tests, build, race detection, PowerShell verification, and loopback smoke tests pass.
 
-No identified database was modified. Applying migration `000001` and verifying successful bootstrap/login/logout/readiness against a live PostgreSQL database remains pending until an explicitly safe database and credentials are provided.
+Migration `000001` and the full identity flow were verified on 2026-07-27 against the explicitly approved, initially empty `pprdb` PostgreSQL 18.4 database. Verification covered `200` readiness, invalid bootstrap, two concurrent valid bootstrap attempts producing exactly one `201`, repeat bootstrap rejection, generic wrong and throttled login behavior, successful login/session recovery, missing-CSRF rejection, logout revocation, post-logout rejection, expected audit actions, 32-byte stored token hashes, Argon2id format, object audit details, complete correlation context, and database rejection of audit update/delete.
+
+The verifier created one temporary Admin and related verification rows. The human approved resetting this production database before real use.

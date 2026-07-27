@@ -1,6 +1,6 @@
 # Plan 0001 — Application foundation
 
-Status: Implemented; live PostgreSQL success-path verification pending
+Status: Verified
 
 ## Surface map
 
@@ -77,4 +77,4 @@ No database-modifying check runs implicitly.
 - Foundation implementation and focused unit tests: complete.
 - Documentation and ADRs: complete.
 - PowerShell syntax, format, module tidiness, vet, tests, OpenAPI, build, race detector, loopback smoke, docs-toggle smoke, and residue scan: passed.
-- Live PostgreSQL migration/readiness success path: not run because no explicit safe connection or credentials are configured.
+- Live PostgreSQL migration/readiness success path: passed on 2026-07-27 against the explicitly approved `pprdb` PostgreSQL 18.4 target.

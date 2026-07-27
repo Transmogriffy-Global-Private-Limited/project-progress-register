@@ -2,7 +2,7 @@
 
 ## 2026-07-27 — Trusted identity slice
 
-Status: Implemented; live PostgreSQL success-path verification pending
+Status: Verified
 
 Approved scope:
 
@@ -34,16 +34,25 @@ Verification:
 
 Remaining before Verified:
 
-- Apply migration `000001` and verify bootstrap, login, session recovery, CSRF rejection, logout, audit rows, and `200 ready` against an explicitly approved safe PostgreSQL database.
+- None for the identity behavior. Production data reset and permanent secret configuration remain operational prerequisites, not missing implementation.
 
 Compatibility and migration impact:
 
 - Adds the first business migration. It is forward-only and creates new identity tables/functions/triggers; it does not alter or delete prior business data.
 - `ppr serve` now requires `SESSION_CSRF_KEY`; migration commands do not. Existing health and optional API-documentation routes remain compatible.
 
+Live verification follow-up:
+
+- Applied migration `000001` to the human-approved, initially empty remote `pprdb` PostgreSQL 18.4 target; status became one applied and zero pending.
+- The first live bootstrap request exposed that the documented `bootstrap_token` field was rejected by the strict decoder. Added canonical JSON tags plus a transport regression test, reran full verification, and then reran live verification successfully.
+- Added `scripts/verify-live-identity.ps1`, which uses ephemeral in-memory security values and requires zero pre-existing users.
+- Verified concurrent bootstrap produced one `201` and one `404`; readiness, login, session recovery, CSRF rejection, throttling, logout, and post-logout behavior matched contracts.
+- Verified one Argon2id password hash, one 32-byte stored session hash, expected audit action counts, object-only audit details, complete request correlation, and trigger rejection of audit updates/deletes.
+- The approved verifier left temporary identity data in the production database; the human stated that the database will be reset before real use.
+
 ## 2026-07-27 — Foundation slice
 
-Status: Implemented; live PostgreSQL success-path verification pending
+Status: Verified
 
 Changed:
 
@@ -71,7 +80,7 @@ Verification:
 
 Remaining before Verified:
 
-- Run `migrate status`, `migrate up`, and a `200 ready` check against an explicitly approved safe development/test database.
+- None. The later trusted-identity verification applied the first migration and proved `200 ready` against the explicitly approved PostgreSQL 18.4 target.
 
 Compatibility and migration impact:
 

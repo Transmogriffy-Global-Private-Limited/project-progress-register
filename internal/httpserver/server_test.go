@@ -177,6 +177,18 @@ func TestAuthenticationHTTPContract(t *testing.T) {
 	}
 }
 
+func TestBootstrapAcceptsDocumentedJSONFields(t *testing.T) {
+	t.Parallel()
+	handler := testHandler(t, false, nil)
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, BootstrapPath, strings.NewReader(`{"bootstrap_token":"configured-bootstrap-token-value","username":"admin","email":"admin@example.com","password":"correct password value"}`))
+	request.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusCreated || !strings.Contains(response.Body.String(), `"username":"admin"`) {
+		t.Fatalf("bootstrap = %d %s", response.Code, response.Body.String())
+	}
+}
+
 func TestLoginFailuresAreGeneric(t *testing.T) {
 	t.Parallel()
 	handler := testHandler(t, false, nil)

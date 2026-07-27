@@ -1,6 +1,6 @@
 # Development plan
 
-Status: Approved product direction; trusted identity implemented with live database verification pending
+Status: Approved product direction; trusted identity verified
 
 ## Project objective
 
@@ -33,7 +33,7 @@ Each phase depends on the security and state boundaries before it and must compl
 
 ### Feature: Application foundation
 
-Status: Implemented
+Status: Verified
 
 Phase: 1
 
@@ -137,15 +137,15 @@ Active feature: None; next approved feature is website account administration
 
 Current implementation slice: None
 
-Last completed slice: Step 02 — trusted identity and authentication audit (live PostgreSQL success path pending)
+Last completed slice: Step 02 — trusted identity and authentication audit, including live PostgreSQL verification
 
 Next expected slice: Website account administration
 
-Blocked by: No implementation blocker; live PostgreSQL success-path verification still requires an explicitly safe database
+Blocked by: No implementation blocker
 
 ## Next approved work
 
-1. Run migration and identity success-path verification against an explicitly approved development/test database when available.
+1. Reset the explicitly disposable verification database before real use and configure persistent production security values.
 2. Implement website-based account administration.
 3. Implement projects, membership, and geofence policy.
 

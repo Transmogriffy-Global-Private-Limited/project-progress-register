@@ -55,6 +55,8 @@ Run from PowerShell 7+ at the repository root:
 .\scripts\verify-all.ps1
 ```
 
+`scripts/verify-live-identity.ps1` is a manually authorized integration verifier. It requires an already migrated database with zero users, creates one temporary Admin and security/audit rows, and must never be included in routine verification or run against a database whose data must be preserved.
+
 Use `.\scripts\run-local.ps1` for loopback-only local serving and `.\scripts\migrate.ps1` for migration status or application.
 
 Every meaningful slice ends with focused verification, a residue scan, full verification, `git diff --check`, and `git status --short`.

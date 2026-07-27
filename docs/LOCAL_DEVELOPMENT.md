@@ -72,6 +72,8 @@ git status --short
 
 `smoke-foundation.ps1` starts two short-lived hidden processes on `127.0.0.1:18080` and `127.0.0.1:18081`, uses a deliberately unreachable PostgreSQL address, confirms readiness fails safely, checks the API-documentation toggle in both states, verifies the actual listener address, and terminates both test processes.
 
+`verify-live-identity.ps1 -EnvFile .env.local` is intentionally manual. It requires a migrated database with zero users and creates one temporary Admin, session, throttle row, and authentication audit history while checking the complete identity flow. Use it only when those writes and the resulting reset requirement are explicitly approved. It generates bootstrap, password, and CSRF values in memory and never prints them.
+
 ## Expected readiness states
 
 - Liveness returns `200` whenever the process can serve HTTP.
