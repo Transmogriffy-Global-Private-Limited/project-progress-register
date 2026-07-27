@@ -26,6 +26,9 @@ func TestLoadWithLookupDefaults(t *testing.T) {
 	if cfg.MigrationDatabaseURL != cfg.DatabaseURL {
 		t.Fatal("migration URL should fall back to runtime URL")
 	}
+	if cfg.SessionTTL != 12*time.Hour {
+		t.Fatalf("SessionTTL = %s", cfg.SessionTTL)
+	}
 }
 
 func TestLoadWithLookupRejectsUnsafeAddress(t *testing.T) {
@@ -57,14 +60,41 @@ func TestLoadWithLookupAcceptsExplicitValues(t *testing.T) {
 		"DATABASE_URL":           "postgres://runtime.invalid/ppr",
 		"MIGRATION_DATABASE_URL": "postgres://migration.invalid/ppr",
 		"API_DOCS_ENABLED":       "true",
+		"SESSION_CSRF_KEY":       "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+		"SESSION_TTL":            "24h",
+		"BOOTSTRAP_TOKEN":        "this-is-a-long-bootstrap-token",
 		"READINESS_TIMEOUT":      "3s",
 		"SHUTDOWN_TIMEOUT":       "15s",
 	}))
 	if err != nil {
 		t.Fatalf("LoadWithLookup() error = %v", err)
 	}
-	if !cfg.APIDocsEnabled || cfg.Environment != "production" || cfg.ReadinessTimeout != 3*time.Second {
+	if !cfg.APIDocsEnabled || cfg.Environment != "production" || cfg.ReadinessTimeout != 3*time.Second || cfg.SessionTTL != 24*time.Hour || len(cfg.SessionCSRFKey) != 32 {
 		t.Fatalf("unexpected config: %#v", cfg)
+	}
+}
+
+func TestLoadWithLookupRejectsInvalidIdentitySecrets(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]map[string]string{
+		"short csrf key": {
+			"DATABASE_URL":     "postgres://example.invalid/ppr",
+			"SESSION_CSRF_KEY": "c2hvcnQ=",
+		},
+		"short bootstrap token": {
+			"DATABASE_URL":    "postgres://example.invalid/ppr",
+			"BOOTSTRAP_TOKEN": "too-short",
+		},
+	}
+	for name, values := range tests {
+		values := values
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := LoadWithLookup(mapLookup(values)); err == nil {
+				t.Fatal("expected invalid identity configuration to fail")
+			}
+		})
 	}
 }
 

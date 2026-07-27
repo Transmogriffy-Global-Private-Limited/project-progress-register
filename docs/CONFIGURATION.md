@@ -5,11 +5,14 @@ Configuration is read from process environment when `ppr` starts. The applicatio
 | Variable | Type / accepted values | Default | Required | Sensitive | Consumer and behavior |
 |---|---|---|---|---|---|
 | `APP_NAME` | Non-empty string | `Project Progress Register` | No | No | HTTP page and API-documentation titles. Keeps branding replaceable. |
-| `APP_ENV` | `development`, `test`, `production` | `development` | No | No | Runtime environment label used in logs and future secure-cookie policy. |
+| `APP_ENV` | `development`, `test`, `production` | `development` | No | No | Runtime environment label. Production adds `Secure` to the session cookie. |
 | `HTTP_ADDR` | Loopback `host:port`; port 1024–65535 | `127.0.0.1:8080` | No | No | HTTP listener. Wildcard, LAN, public, malformed, and privileged addresses are rejected. IPv6 uses `[::1]:port`. |
 | `DATABASE_URL` | PostgreSQL connection URI | None | Yes | Yes | Runtime PostgreSQL pool and, by default, migrations. Never logged. |
 | `MIGRATION_DATABASE_URL` | PostgreSQL connection URI | `DATABASE_URL` | No | Yes | Migration command only. Production may supply a more privileged migration role while the server uses a restricted runtime role. |
 | `API_DOCS_ENABLED` | Exactly `true` or `false` | `false` | No | No | Registers or omits `/api/docs/`, `/api/docs`, and `/api/openapi/v1/openapi.yaml`. |
+| `SESSION_CSRF_KEY` | Standard Base64 of exactly 32 bytes | None | Required for `serve`; not migrations | Yes | HMAC key for deriving session-bound CSRF tokens. Changing it invalidates outstanding CSRF tokens and requires restart, but does not revoke sessions. |
+| `SESSION_TTL` | Go duration from `15m` through `168h` | `12h` | No | No | Absolute lifetime of each newly created session and cookie. |
+| `BOOTSTRAP_TOKEN` | 24–256 non-whitespace-trimmed characters | None | No | Yes | Enables one-time first-Admin setup only while no users exist. Remove after bootstrap and restart. Never stored or logged. |
 | `READINESS_TIMEOUT` | Go duration from `100ms` through `30s` | `2s` | No | No | Total bound for PostgreSQL ping plus migration-current verification. |
 | `SHUTDOWN_TIMEOUT` | Go duration from `1s` through `1m` | `10s` | No | No | Graceful HTTP request-drain deadline after termination signal. |
 

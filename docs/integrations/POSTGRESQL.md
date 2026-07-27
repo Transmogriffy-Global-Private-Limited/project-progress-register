@@ -4,7 +4,7 @@
 
 PostgreSQL is the authoritative durable store for application state, security state, metadata, revisions, assessments, and audit history. The Go application owns business orchestration; PostgreSQL enforces transactions, relationships, uniqueness, and checks.
 
-The foundation creates a pool with at most eight connections to suit the 2 GB VPS target. It uses no extension and supports the production PostgreSQL 18.4 target.
+The runtime creates a pool with at most eight connections to suit the 2 GB VPS target. Migration `000001_identity_and_audit.sql` creates `users`, `sessions`, `login_throttles`, and `audit_events` with constraints and indexes. Random UUID defaults use PostgreSQL's built-in `gen_random_uuid()`.
 
 ## Authentication and configuration
 
@@ -33,6 +33,8 @@ Migrations are named `NNNNNN_lowercase_name.sql` and embedded in the binary. Alr
 The server constructs its pool lazily and can serve liveness while PostgreSQL is offline. Readiness performs a bounded ping followed by migration-current verification. Connection loss, missing ledger, checksum drift, unknown applied versions, or pending migrations produce `503 not_ready` without leaking details.
 
 Migration transactions prevent partially applied SQL within one file. The advisory lock prevents two application migrators from applying concurrently. Operators retry after correcting connectivity, credentials, or schema state; destructive database recovery is never automatic.
+
+Identity transitions keep each durable fact and its audit event together: bootstrap inserts user plus audit; successful login inserts session, updates last-login state, clears its throttle bucket, and audits; failure updates throttle plus audit; logout revokes plus audits. A transaction rollback prevents half-recorded identity state.
 
 ## Local constraints and verification
 

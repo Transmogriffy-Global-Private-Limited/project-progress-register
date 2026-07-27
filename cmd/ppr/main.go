@@ -16,6 +16,7 @@ import (
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/database"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/health"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/httpserver"
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/migrations"
 )
 
@@ -68,11 +69,21 @@ func serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("create readiness checker: %w", err)
 	}
+	identityRepository, err := identity.NewPostgresRepository(pool)
+	if err != nil {
+		return fmt.Errorf("create identity repository: %w", err)
+	}
+	identityService, err := identity.NewService(ctx, identityRepository, identity.ServiceConfig{CSRFKey: cfg.SessionCSRFKey, SessionTTL: cfg.SessionTTL, BootstrapToken: cfg.BootstrapToken})
+	if err != nil {
+		return fmt.Errorf("create identity service: %w", err)
+	}
 	handler, err := httpserver.New(httpserver.Options{
 		AppName:        cfg.AppName,
 		APIDocsEnabled: cfg.APIDocsEnabled,
 		Logger:         logger,
 		Readiness:      readiness,
+		Identity:       identityService,
+		Production:     cfg.Environment == "production",
 	})
 	if err != nil {
 		return fmt.Errorf("create HTTP handler: %w", err)

@@ -16,6 +16,7 @@ function Test-FoundationState {
     $env:HTTP_ADDR = "127.0.0.1:$Port"
     $env:DATABASE_URL = 'postgres://ppr_test:unused@127.0.0.1:1/ppr_test?sslmode=disable&connect_timeout=1'
     $env:API_DOCS_ENABLED = $DocsEnabled.ToString().ToLowerInvariant()
+    $env:SESSION_CSRF_KEY = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
 
     if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) {
         throw "smoke-test port $Port is already in use"

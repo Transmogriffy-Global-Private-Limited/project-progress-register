@@ -1,6 +1,6 @@
 # Permissions
 
-Status: Approved model; enforcement arrives with each vertical feature.
+Status: Admin/Member roles and enabled-account session enforcement are implemented; project and account-management authorization arrives with those features.
 
 Authorization is enforced in backend application services and project-scoped persistence queries. Templates may hide unavailable actions for usability but are never an authorization boundary.
 

@@ -1,6 +1,6 @@
 # ADR 0002 — Local accounts and backend authorization
 
-Status: Accepted; implementation planned for the next slices
+Status: Accepted; identity foundation implemented, account and project authorization pending
 
 Date: 2026-07-27
 

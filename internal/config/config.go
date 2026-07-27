@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net"
 	"os"
@@ -15,6 +16,7 @@ const (
 	defaultHTTPAddress      = "127.0.0.1:8080"
 	defaultReadinessTimeout = 2 * time.Second
 	defaultShutdownTimeout  = 10 * time.Second
+	defaultSessionTTL       = 12 * time.Hour
 )
 
 // Config contains the complete foundation runtime configuration.
@@ -25,6 +27,9 @@ type Config struct {
 	DatabaseURL          string
 	MigrationDatabaseURL string
 	APIDocsEnabled       bool
+	SessionCSRFKey       []byte
+	SessionTTL           time.Duration
+	BootstrapToken       string
 	ReadinessTimeout     time.Duration
 	ShutdownTimeout      time.Duration
 }
@@ -49,6 +54,7 @@ func LoadWithLookup(lookup LookupEnv) (Config, error) {
 		HTTPAddress:      valueOrDefault(lookup, "HTTP_ADDR", defaultHTTPAddress),
 		ReadinessTimeout: defaultReadinessTimeout,
 		ShutdownTimeout:  defaultShutdownTimeout,
+		SessionTTL:       defaultSessionTTL,
 	}
 
 	if !isEnvironment(cfg.Environment) {
@@ -75,8 +81,25 @@ func LoadWithLookup(lookup LookupEnv) (Config, error) {
 		}
 		cfg.APIDocsEnabled = value
 	}
+	if raw, ok := nonEmptyValue(lookup, "SESSION_CSRF_KEY"); ok {
+		key, err := base64.StdEncoding.DecodeString(raw)
+		if err != nil || len(key) != 32 {
+			return Config{}, fmt.Errorf("SESSION_CSRF_KEY must be standard base64 encoding of exactly 32 bytes")
+		}
+		cfg.SessionCSRFKey = key
+	}
+	if raw, ok := nonEmptyValue(lookup, "BOOTSTRAP_TOKEN"); ok {
+		if len(raw) < 24 || len(raw) > 256 {
+			return Config{}, fmt.Errorf("BOOTSTRAP_TOKEN must contain 24 through 256 characters")
+		}
+		cfg.BootstrapToken = raw
+	}
 
 	var err error
+	cfg.SessionTTL, err = durationValue(lookup, "SESSION_TTL", defaultSessionTTL, 15*time.Minute, 7*24*time.Hour)
+	if err != nil {
+		return Config{}, err
+	}
 	cfg.ReadinessTimeout, err = durationValue(lookup, "READINESS_TIMEOUT", defaultReadinessTimeout, 100*time.Millisecond, 30*time.Second)
 	if err != nil {
 		return Config{}, err

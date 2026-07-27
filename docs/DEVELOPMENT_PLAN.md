@@ -1,6 +1,6 @@
 # Development plan
 
-Status: Approved product direction; foundation implemented with live PostgreSQL success-path verification pending
+Status: Approved product direction; trusted identity implemented with live database verification pending
 
 ## Project objective
 
@@ -47,7 +47,7 @@ Acceptance and verification are detailed in `plans/0001-foundation.md`.
 
 ### Feature: Trusted identity and audit foundation
 
-Status: Ready
+Status: Implemented
 
 Phase: 2
 
@@ -55,7 +55,9 @@ Depends on: application foundation and its pending live PostgreSQL success-path 
 
 Objective: Bootstrap the first Admin once, authenticate enabled users securely, manage opaque database sessions and CSRF, throttle login, and append required authentication audit events.
 
-Acceptance criteria include no public registration, secure hashes/tokens/cookies, session revocation, final-Admin protection, backend enforcement, complete contracts, and focused security tests.
+Acceptance criteria include no public registration, secure hashes/tokens/cookies, session revocation, backend enforcement, complete contracts, and focused security tests. The final-enabled-Admin mutation guard belongs to account administration because this slice exposes no role/disable command.
+
+Detailed plan: `plans/0002-trusted-identity.md`.
 
 ### Feature: Website account administration
 
@@ -129,24 +131,23 @@ Objective: Complete useful dashboards, full Admin audit access, accessibility/br
 
 ## Current execution
 
-Current phase: Foundation
+Current phase: Account administration preparation
 
-Active feature: Application foundation
+Active feature: None; next approved feature is website account administration
 
-Current implementation slice: Step 01 — live PostgreSQL migration/readiness success-path verification
+Current implementation slice: None
 
-Last completed slice: Foundation implementation and all non-database verification
+Last completed slice: Step 02 — trusted identity and authentication audit (live PostgreSQL success path pending)
 
-Next expected slice: Trusted identity and audit foundation
+Next expected slice: Website account administration
 
-Blocked by: No explicit safe PostgreSQL connection is configured; the existing local database is not assumed disposable
+Blocked by: No implementation blocker; live PostgreSQL success-path verification still requires an explicitly safe database
 
 ## Next approved work
 
-1. Run migration and ready-state verification against an explicitly approved development/test database.
-2. Implement one-time Admin bootstrap, login/logout, sessions, CSRF, throttling, and authentication audit events.
-3. Implement website-based account administration.
-4. Implement projects, membership, and geofence policy.
+1. Run migration and identity success-path verification against an explicitly approved development/test database when available.
+2. Implement website-based account administration.
+3. Implement projects, membership, and geofence policy.
 
 ## Risks and unresolved decisions
 

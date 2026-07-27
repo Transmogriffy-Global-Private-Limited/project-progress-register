@@ -12,13 +12,17 @@
     <header>
       <p class="eyebrow">Internal project register</p>
       <h1>{{.AppName}}</h1>
-      <p class="lede">A simple place for projects, tasks, and chronological progress updates.</p>
+      <p class="lede">Signed in as <strong>{{.User.Username}}</strong> ({{.User.Role}}).</p>
     </header>
 
     <section class="panel" aria-labelledby="foundation-heading">
-      <h2 id="foundation-heading">Foundation ready</h2>
-      <p>The application shell is running. Account and project workflows will be introduced in the next verified slices.</p>
+      <h2 id="foundation-heading">Identity foundation ready</h2>
+      <p>Your revocable server-side session is active. Project workflows will arrive in the next verified slices.</p>
       {{if .APIDocsEnabled}}<p><a href="/api/docs/">View the implemented API contract</a></p>{{end}}
+      <form method="post" action="/logout">
+        <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+        <button type="submit">Sign out</button>
+      </form>
     </section>
   </main>
 </body>

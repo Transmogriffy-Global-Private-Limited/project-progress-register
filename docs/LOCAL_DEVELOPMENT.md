@@ -21,6 +21,8 @@ $env:APP_ENV = 'development'
 $env:HTTP_ADDR = '127.0.0.1:8080'
 $env:DATABASE_URL = 'postgres://<user>:<password>@127.0.0.1:5432/<database>?sslmode=disable'
 $env:API_DOCS_ENABLED = 'true'
+$env:SESSION_CSRF_KEY = '<standard-base64-encoded-32-random-bytes>'
+$env:BOOTSTRAP_TOKEN = '<one-time-secret-at-least-24-characters>'
 ```
 
 Do not paste real credentials into documentation, source files, screenshots, or chat.
@@ -48,6 +50,8 @@ Apply the reviewed embedded migrations to the explicitly configured database:
 ```
 
 Then open `http://127.0.0.1:8080/`. When API docs are enabled, the viewer is at `http://127.0.0.1:8080/api/docs/` and the raw contract is at `http://127.0.0.1:8080/api/openapi/v1/openapi.yaml`.
+
+On the first run only, open `/setup` and provide the configured bootstrap token. After the Admin is created, remove `BOOTSTRAP_TOKEN` from the environment and restart. The application has no public registration route.
 
 The server refuses non-loopback and privileged-port configurations. Camera and geolocation browser APIs require a secure context; loopback is treated as secure by modern browsers, while production relies on Caddy HTTPS.
 

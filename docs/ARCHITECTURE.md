@@ -13,7 +13,7 @@ Browser
   -> Caddy HTTPS (production only)
   -> Go HTTP server on loopback
       -> server-rendered templates and static assets
-      -> application/use-case services (future vertical slices)
+      -> identity application service
       -> PostgreSQL pool
       -> local attachment storage (future evidence slice)
 ```
@@ -28,6 +28,7 @@ The current foundation contains one `ppr` binary with explicit `serve`, `migrate
 - `internal/migrations` — embedded forward-only SQL migrations, checksums, advisory locking, and schema-current checks.
 - `internal/health` — bounded readiness orchestration.
 - `internal/httpserver` — HTTP routing, transport behavior, security headers, logging, and error containment.
+- `internal/identity` — account validation, Argon2id password policy, bootstrap, login throttling, opaque sessions, CSRF, audit orchestration, and PostgreSQL identity queries.
 - `internal/webui` — trusted templates and static assets.
 - `api/openapi/v1` — authoritative version-one OpenAPI document and embedded schema bytes.
 
@@ -41,7 +42,8 @@ Future domain packages will be added only with the vertical slice that uses them
 load and validate environment
 -> create a lazy PostgreSQL pool
 -> load embedded migration metadata
--> construct bounded readiness
+-> construct bounded readiness and PostgreSQL identity repository
+-> construct identity policy (including a fixed dummy password verifier)
 -> parse templates and register routes
 -> bind the validated loopback address
 -> serve until SIGINT or SIGTERM
@@ -64,7 +66,7 @@ Runtime and migration database URLs can differ so production can give the runtim
 
 ## HTTP and contracts
 
-The application uses `net/http` and `html/template`. HTMX and small vanilla JavaScript may be added only when a workflow needs them. HTML form handlers and JSON endpoints will call the same application services rather than duplicate policy.
+The application uses `net/http` and `html/template`. HTML forms and JSON identity endpoints call the same identity service. Request middleware creates a random correlation ID and accepts `X-Forwarded-For` only from a loopback peer, matching the Caddy boundary.
 
 `api/openapi/v1/openapi.yaml` is specification-first and authoritative for the implemented JSON API. The same embedded bytes power validation, the raw schema route, and Swagger UI. `API_DOCS_ENABLED=false` prevents both documentation routes from being registered.
 
@@ -73,6 +75,7 @@ The application uses `net/http` and `html/template`. HTMX and small vanilla Java
 - `github.com/jackc/pgx/v5` provides the native PostgreSQL driver and bounded connection pool.
 - `github.com/getkin/kin-openapi` validates the committed OpenAPI document during tests; it does not sit in the request path.
 - `github.com/swaggest/swgui/v5emb` provides embedded Swagger UI assets so documentation needs neither Node.js nor a public CDN.
+- `golang.org/x/crypto` provides Argon2id password hashing.
 
 Migration orchestration remains a small project-owned component because the required behavior is limited to ordered embedded SQL, checksums, advisory locking, transactional forward application, status, and readiness. It does not parse SQL or attempt automatic rollback.
 
@@ -81,10 +84,12 @@ Migration orchestration remains a small project-owned component because the requ
 - Listener validation rejects wildcard, LAN, public, malformed, and privileged addresses.
 - Configuration is environment-only; secrets are never committed or logged.
 - HTTP responses set baseline content, framing, referrer, and MIME-sniffing protections.
-- Future authentication uses server-side opaque sessions and CSRF protection.
+- Authentication uses random opaque tokens in host-only `HttpOnly`, `SameSite=Lax` cookies. Only token hashes are durable; every request rechecks expiry, revocation, and the user enabled flag.
+- Authenticated writes require an HMAC-derived, session-bound CSRF token. Production cookies additionally set `Secure`.
+- Five failed logins per normalized-identifier/IP pair in 15 minutes block that pair for 15 minutes. Client errors do not disclose account, enabled, or throttle state.
 - Future authorization is centralized in application services and reinforced by project-scoped queries and database constraints.
 - Browser evidence remains explicitly non-cryptographic; see `EVIDENCE_AND_TRUST_MODEL.md`.
 
 ## Recovery model
 
-The process is stateless apart from PostgreSQL and the future attachment root. Restart reconstructs configuration, pools, templates, routes, and migration expectations. PostgreSQL preserves business state. The attachment slice will introduce staged writes, explicit metadata state, and reconciliation so database/filesystem partial failure is recoverable.
+The process is stateless apart from PostgreSQL and the future attachment root. Restart reconstructs configuration, pools, identity policy, templates, routes, and migration expectations. PostgreSQL preserves accounts, hashed sessions, throttles, and append-only audit events. Expired or revoked sessions stop authenticating immediately; retention cleanup is intentionally deferred.

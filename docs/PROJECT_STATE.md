@@ -16,20 +16,27 @@ As of 2026-07-27
 - Baseline HTTP security headers, structured request logs, panic containment, server timeouts, and graceful shutdown.
 - Native PowerShell formatting, build, test, run, migration, OpenAPI, and full-verification scripts.
 - Authoritative product, architecture, domain, permission, evidence, operational, planning, and decision documentation.
+- One-time first-Admin bootstrap guarded by an optional environment secret and a PostgreSQL advisory lock.
+- Local Admin/Member account schema and Argon2id password hashing with bounded concurrent work.
+- Revocable PostgreSQL-backed opaque sessions, host-only `HttpOnly`/`SameSite=Lax` cookies, production `Secure`, and session-bound HMAC CSRF tokens.
+- Durable identifier/IP login throttling, generic credential failures, and a dummy password verifier for unknown accounts.
+- Append-only authentication audit events correlated by random request ID and trusted client IP.
+- Server-rendered setup, login, authenticated home, and logout flows.
+- JSON bootstrap, login, session recovery, and logout endpoints with complete OpenAPI/Swagger coverage.
 
 ## Verification state
 
-Formatting, module tidiness, `go vet`, all Go tests, OpenAPI validation and route coverage, full build, race-detector tests, PowerShell syntax, residue scanning, and live loopback smoke checks pass. The smoke check confirmed home `200`, liveness `200`, unavailable-database readiness `503`, actual `127.0.0.1` listeners, and API documentation `200` when enabled versus `404` when disabled.
+Formatting, module tidiness, `go vet`, all Go tests, identity policy tests, HTTP cookie/CSRF/generic-error tests, OpenAPI validation and route coverage, full build, race-detector tests, PowerShell syntax, and live loopback smoke checks pass. The smoke check confirmed the redirected login page `200`, liveness `200`, unavailable-database readiness `503`, actual `127.0.0.1` listeners, and API documentation `200` when enabled versus `404` when disabled.
 
-No live PostgreSQL migration was applied because no explicitly disposable development/test database or credentials were identified. PostgreSQL is listening at local port 5432, but unauthenticated read-only connection attempts correctly failed. Database integration is implemented, unit-tested, and failure-path smoke-tested; its successful live migration/readiness path remains unverified. The foundation is therefore Implemented, not Verified.
+No live PostgreSQL migration was applied because no explicitly disposable development/test database or credentials were identified. PostgreSQL is listening at local port 5432, but unauthenticated read-only connection attempts correctly failed. Database integration is implemented, unit-tested, and failure-path smoke-tested; successful live migration, bootstrap, login, logout, audit, and ready-state behavior remain unverified. Foundation and identity are therefore Implemented, not Verified.
 
 ## Not implemented
 
-- Users, bootstrap Admin, authentication, sessions, CSRF, throttling, or password reset.
-- Audit-event schema or viewer.
+- General user administration, final-enabled-Admin enforcement, or password reset.
+- Audit-event viewer.
 - Projects, membership, geofences, tasks, Markdown editing, progress updates, revisions, attachments, comments, suggestions, assessments, or dashboards.
 - Deployment, Caddy configuration, production database roles, backup/restore automation, or attachment storage.
 
 ## Next slice
 
-Implement trusted identity and the audit foundation as one vertical slice: first-Admin bootstrap, login/logout, opaque sessions, CSRF, throttling, session revocation, final-Admin invariant, authentication audit events, UI/API contracts, and security verification.
+Run the identity migration and success-path checks on an explicitly approved safe PostgreSQL database, then implement website account administration with final-enabled-Admin enforcement.

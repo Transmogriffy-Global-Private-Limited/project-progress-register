@@ -4,14 +4,85 @@ info:
   version: 0.1.0
   description: >-
     Authoritative contract for the implemented Project Progress Register HTTP API.
-    The foundation currently exposes only dependency-safe health endpoints.
+    Cookie-authenticated internal API. Login returns a session-bound CSRF token;
+    authenticated write requests must send it in X-CSRF-Token.
 servers:
   - url: /
     description: Current application origin
 tags:
   - name: Health
     description: Process and dependency health used by operators and the reverse proxy.
+  - name: Identity
+    description: One-time bootstrap, login, session recovery, and logout.
 paths:
+  /api/v1/setup/bootstrap:
+    post:
+      tags: [Identity]
+      operationId: bootstrapAdmin
+      summary: Create the first Admin exactly once
+      description: Available only while no users exist and BOOTSTRAP_TOKEN is configured. The token is never retained.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BootstrapRequest'}
+            example: {bootstrap_token: replace-with-configured-secret, username: admin, email: admin@example.com, password: correct horse battery staple}
+      responses:
+        '201':
+          description: Initial Admin created.
+          content: {application/json: {schema: {$ref: '#/components/schemas/UserResponse'}}}
+        '403': {$ref: '#/components/responses/BootstrapDenied'}
+        '404': {$ref: '#/components/responses/BootstrapUnavailable'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v1/auth/login:
+    post:
+      tags: [Identity]
+      operationId: login
+      summary: Start a revocable opaque session
+      description: Unknown, disabled, incorrect, and throttled credentials have the same client-visible response. Sets the host-only ppr_session cookie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+            example: {identifier: admin, password: correct horse battery staple}
+      responses:
+        '200':
+          description: Authenticated; a new session cookie is set.
+          headers:
+            Set-Cookie: {schema: {type: string}, description: HttpOnly host-only ppr_session cookie with SameSite=Lax; Secure in production.}
+          content: {application/json: {schema: {$ref: '#/components/schemas/SessionResponse'}}}
+        '401': {$ref: '#/components/responses/InvalidCredentials'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+  /api/v1/auth/session:
+    get:
+      tags: [Identity]
+      operationId: getCurrentSession
+      summary: Recover the authenticated user and CSRF token
+      security: [{cookieSession: []}]
+      responses:
+        '200':
+          description: Current non-expired session for an enabled user.
+          content: {application/json: {schema: {$ref: '#/components/schemas/SessionResponse'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+  /api/v1/auth/logout:
+    post:
+      tags: [Identity]
+      operationId: logout
+      summary: Revoke the current session
+      description: Requires X-CSRF-Token when a valid session is present. Repeated logout without a session succeeds.
+      security: [{cookieSession: []}]
+      parameters:
+        - in: header
+          name: X-CSRF-Token
+          required: false
+          schema: {type: string}
+          description: Required for an authenticated session and obtained from login or session recovery.
+      responses:
+        '200':
+          description: Session is absent or has been revoked and the cookie is cleared.
+          content: {application/json: {schema: {$ref: '#/components/schemas/LogoutResponse'}}}
+        '403': {$ref: '#/components/responses/CSRFInvalid'}
   /api/v1/health/live:
     get:
       tags: [Health]
@@ -53,7 +124,92 @@ paths:
               example:
                 status: not_ready
 components:
+  securitySchemes:
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: ppr_session
+      description: Opaque session token; only its SHA-256 digest is stored.
+  responses:
+    InvalidCredentials:
+      description: Credentials are invalid; account existence and throttle state are intentionally undisclosed.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}, example: {error: {code: invalid_credentials, message: The credentials are invalid.}}}}
+    Unauthenticated:
+      description: A current authenticated session is required.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    CSRFInvalid:
+      description: The session-bound CSRF token is missing or invalid.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    BootstrapDenied:
+      description: The bootstrap secret was rejected.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    BootstrapUnavailable:
+      description: Initial setup is disabled or an account already exists.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    ValidationFailed:
+      description: An input field failed validation.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    UnsupportedMediaType:
+      description: Content-Type must be application/json.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
   schemas:
+    BootstrapRequest:
+      type: object
+      additionalProperties: false
+      required: [bootstrap_token, username, email, password]
+      properties:
+        bootstrap_token: {type: string, minLength: 24, maxLength: 256, writeOnly: true}
+        username: {type: string, pattern: '^[a-z0-9][a-z0-9._-]{2,31}$'}
+        email: {type: string, format: email, maxLength: 254}
+        password: {type: string, minLength: 12, maxLength: 128, writeOnly: true, description: At least 12 Unicode characters and at most 128 UTF-8 bytes.}
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [identifier, password]
+      properties:
+        identifier: {type: string, maxLength: 254}
+        password: {type: string, maxLength: 128, writeOnly: true}
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, username, email, role, enabled, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        username: {type: string}
+        email: {type: string, format: email}
+        role: {type: string, enum: [admin, member]}
+        enabled: {type: boolean}
+        created_at: {type: string, format: date-time}
+    UserResponse:
+      type: object
+      additionalProperties: false
+      required: [user]
+      properties: {user: {$ref: '#/components/schemas/User'}}
+    SessionResponse:
+      type: object
+      additionalProperties: false
+      required: [user, csrf_token, expires_at]
+      properties:
+        user: {$ref: '#/components/schemas/User'}
+        csrf_token: {type: string, description: Session-bound token required on authenticated writes.}
+        expires_at: {type: string, format: date-time}
+    LogoutResponse:
+      type: object
+      additionalProperties: false
+      required: [logged_out]
+      properties: {logged_out: {type: boolean, const: true}}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code: {type: string}
+            message: {type: string}
     LivenessResponse:
       type: object
       additionalProperties: false

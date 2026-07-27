@@ -6,6 +6,7 @@ require (
 	github.com/getkin/kin-openapi v0.145.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/swaggest/swgui v1.8.9
+	golang.org/x/crypto v0.54.0
 )
 
 require (
@@ -19,6 +20,7 @@ require (
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/vearutop/statigz v1.4.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 )

@@ -1,6 +1,6 @@
 # Domain model
 
-Status: Approved design; domain tables are not implemented in the foundation slice.
+Status: Identity, session, throttle, and audit tables are implemented; project-domain tables remain approved design.
 
 ## Aggregate relationships
 
@@ -25,6 +25,8 @@ Project
 `users` owns normalized username/email, password hash, global role, enabled state, and timestamps. User identity is never reused. Disabling an account ends active access but preserves authorship and audit history.
 
 `sessions` owns only a hash of a random opaque token, user, creation/expiry times, and revocation data. A raw session token exists only in the secure cookie.
+
+`login_throttles` owns a SHA-256 normalized-identifier digest plus client IP, window, count, and block deadline. It deliberately cannot be used to enumerate usernames.
 
 The system must always retain at least one enabled Admin.
 
@@ -64,11 +66,11 @@ Task history will preserve materially edited content where needed for audit and 
 
 ## Audit
 
-`audit_events` is append-only and records actor when known, action, target type and identity, server timestamp, outcome, request correlation, and carefully selected context. It never stores passwords, session tokens, reset tokens, attachment bytes, or unrestricted request bodies.
+`audit_events` is append-only and records actor when known, action, target type and identity, server timestamp, outcome, request correlation, client IP, user agent, and carefully selected context. Database triggers reject updates and deletes. It never stores passwords, bootstrap secrets, session tokens, CSRF tokens, attachment bytes, or unrestricted request bodies.
 
 ## Common persistence rules
 
-- Application-generated UUIDs avoid database extensions and expose no sequential business information.
+- PostgreSQL-generated random UUIDs expose no sequential business information; externally supplied IDs are never accepted for identity creation.
 - Durable timestamps use PostgreSQL `timestamptz` and UTC semantics.
 - Foreign keys, unique constraints, checks, and indexes enforce durable invariants.
 - Creator identities are immutable even after membership or account state changes.

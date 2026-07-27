@@ -2,6 +2,7 @@ package openapiv1_test
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/api/openapi/v1"
@@ -22,8 +23,16 @@ func TestOpenAPIContract(t *testing.T) {
 	}
 	for _, route := range httpserver.ContractRoutes() {
 		pathItem := document.Paths.Find(route.Path)
-		if pathItem == nil || pathItem.Get == nil {
-			t.Errorf("OpenAPI is missing GET %s", route.Path)
+		var present bool
+		if pathItem != nil {
+			if route.Method == http.MethodGet {
+				present = pathItem.Get != nil
+			} else if route.Method == http.MethodPost {
+				present = pathItem.Post != nil
+			}
+		}
+		if !present {
+			t.Errorf("OpenAPI is missing %s %s", route.Method, route.Path)
 		}
 	}
 }

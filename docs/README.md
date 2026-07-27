@@ -21,6 +21,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 
 - `DEVELOPMENT_PLAN.md` — canonical living plan and feature registry.
 - `plans/0001-foundation.md` — detailed foundation implementation plan.
+- `plans/0002-trusted-identity.md` — active identity, session, CSRF, throttling, and audit plan.
 - `PROJECT_STATE.md` — implemented and verified reality.
 - `AI_CHANGELOG.md` — chronological agent-assisted change record.
 
