@@ -35,4 +35,23 @@ func TestTaskUpdateRequiresPositiveVersion(t *testing.T) {
 	}
 }
 
+func TestTaskV2ValidatesAndForwardsMultipleResponsibilities(t *testing.T) {
+	t.Parallel()
+	service, _ := NewService(&fakeRepository{}, fakeRenderer{})
+	actor := identity.User{ID: "admin-id", Role: identity.RoleAdmin, Enabled: true}
+	first := "22222222-2222-4222-8222-222222222222"
+	second := "33333333-3333-4333-8333-333333333333"
+
+	task, err := service.CreateTaskV2(context.Background(), actor, "project-id", CreateTaskV2Input{Name: "Task", ResponsibleUserIDs: []string{second, first}}, testAudit())
+	if err != nil || len(task.ResponsibleMembers) != 2 || task.ResponsibleMembers[0].UserID != first || task.ResponsibleMembers[1].UserID != second {
+		t.Fatalf("CreateTaskV2 task=%#v error=%v", task, err)
+	}
+
+	_, err = service.CreateTaskV2(context.Background(), actor, "project-id", CreateTaskV2Input{Name: "Task", ResponsibleUserIDs: []string{first, first}}, testAudit())
+	var validation *ValidationError
+	if !errors.As(err, &validation) || validation.Field != "responsible_user_ids" {
+		t.Fatalf("duplicate responsibilities error=%v", err)
+	}
+}
+
 func stringPointer(value string) *string { return &value }

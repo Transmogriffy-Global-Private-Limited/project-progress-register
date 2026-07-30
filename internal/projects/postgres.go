@@ -254,26 +254,32 @@ func (r *PostgresRepository) RemoveMember(ctx context.Context, projectID, userID
 	}
 	cleared, err := tx.Exec(ctx, `
 		WITH affected AS MATERIALIZED (
-			SELECT id,version,name,goals_markdown,description_markdown,responsible_user_id,target_date
-			FROM public.tasks
-			WHERE project_id=$1::uuid AND responsible_user_id=$2::uuid
+			SELECT t.id,t.version,t.name,t.goals_markdown,t.description_markdown,t.target_date,
+			       ARRAY(SELECT tr.user_id FROM public.task_responsibilities tr WHERE tr.task_id=t.id ORDER BY tr.user_id) AS responsible_user_ids
+			FROM public.tasks t
+			WHERE t.project_id=$1::uuid AND EXISTS (
+				SELECT 1 FROM public.task_responsibilities tr WHERE tr.task_id=t.id AND tr.user_id=$2::uuid
+			)
 			FOR UPDATE
 		), revisions AS (
 			INSERT INTO public.task_revisions(
 				task_id,from_version,to_version,
-				previous_name,previous_goals_markdown,previous_description_markdown,previous_responsible_user_id,previous_target_date,
-				new_name,new_goals_markdown,new_description_markdown,new_responsible_user_id,new_target_date,change_reason,edited_by
+				previous_name,previous_goals_markdown,previous_description_markdown,previous_responsible_user_ids,previous_target_date,
+				new_name,new_goals_markdown,new_description_markdown,new_responsible_user_ids,new_target_date,change_reason,edited_by
 			)
-			SELECT id,version,version+1,name,goals_markdown,description_markdown,responsible_user_id,target_date,
-			       name,goals_markdown,description_markdown,NULL,target_date,'membership_removed',$3::uuid
+			SELECT id,version,version+1,name,goals_markdown,description_markdown,responsible_user_ids,target_date,
+			       name,goals_markdown,description_markdown,array_remove(responsible_user_ids,$2::uuid),target_date,'membership_removed',$3::uuid
 			FROM affected
 			RETURNING task_id
 		)
 		UPDATE public.tasks t
-		SET responsible_user_id=NULL,updated_at=clock_timestamp(),version=version+1
+		SET updated_at=clock_timestamp(),version=version+1
 		FROM revisions r WHERE t.id=r.task_id`, projectID, userID, event.ActorUserID)
 	if err != nil {
 		return fmt.Errorf("clear removed Member task responsibility: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM public.task_responsibilities WHERE user_id=$1::uuid AND task_id IN (SELECT id FROM public.tasks WHERE project_id=$2::uuid)`, userID, projectID); err != nil {
+		return fmt.Errorf("remove task responsibility assignments: %w", err)
 	}
 	if event.Details == nil {
 		event.Details = map[string]any{}

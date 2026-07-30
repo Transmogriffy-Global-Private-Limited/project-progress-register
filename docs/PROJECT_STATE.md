@@ -1,6 +1,6 @@
 # Project state
 
-As of 2026-07-27
+As of 2026-07-30
 
 ## Implemented
 
@@ -16,7 +16,7 @@ As of 2026-07-27
 - Baseline HTTP security headers, structured request logs, panic containment, server timeouts, and graceful shutdown.
 - Native PowerShell formatting, build, test, run, migration, OpenAPI, and full-verification scripts.
 - Authoritative product, architecture, domain, permission, evidence, operational, planning, and decision documentation.
-- Self-contained frontend integration handoff covering every browser workflow, all 39 OpenAPI operations, payload/response types, permissions, errors, retries, uploads, pagination, and screen-level recovery, with route/operation drift verification in the full suite.
+- Self-contained frontend integration handoff covering every browser workflow, all 43 OpenAPI operations across 31 paths, payload/response types, permissions, errors, retries, uploads, pagination, and screen-level recovery, with route/operation drift verification in the full suite.
 - One-time first-Admin bootstrap guarded by an optional environment secret and a PostgreSQL advisory lock.
 - Local Admin/Member account schema and Argon2id password hashing with bounded concurrent work.
 - Revocable PostgreSQL-backed opaque sessions, host-only `HttpOnly`/`SameSite=Lax` cookies, production `Secure`, and session-bound HMAC CSRF tokens.
@@ -48,6 +48,14 @@ Cloudflare's authoritative A and AAAA records match this VPS. Caddy obtained a L
 
 - Environment-specific off-host backup scheduling/retention and a recorded disposable restore drill.
 - The optional future “needs progress update” classification; factual dashboard fields are implemented without inventing that policy.
+
+## Multiple task responsibilities verified locally; not deployed
+
+Migration `000008` adds the authoritative `task_responsibilities` set, losslessly converts existing singular current and revision values, and removes the obsolete singular storage columns. Additive `/api/v2/projects/{project_id}/tasks...` list/create/detail/update operations expose deterministic `responsible_members` arrays and atomically replace the complete assignment set. Existing V1 routes keep their singular request/response contract; V1 reads select one deterministic compatibility member and V1 update returns `409 task_v2_required` rather than silently flattening a multi-assigned task. Responsibility still grants neither access nor edit ownership.
+
+On an explicitly disposable loopback-only PostgreSQL 17 target, migration `000008` preserved seeded current and historical responsibility values. The guarded task workflow then passed two-member V2 create, authorized read, non-owner denial, V1 compatibility read, V1 unsafe-flatten rejection, V2 assignment replacement, stale-version conflict, membership-removal cleanup/versioning, plural and singular-compatible timeline reconstruction, and inactive-project enforcement. Focused tests, OpenAPI validation, frontend drift verification, the full verifier, all-package race detection, and all three root/prefixed API-documentation smoke states pass.
+
+This slice has not been committed, pushed, published, migrated, or deployed. Production remains on migration `000007` and its existing deployed backend until separately authorized publication and deployment.
 
 ## Implemented; database-live verification pending
 

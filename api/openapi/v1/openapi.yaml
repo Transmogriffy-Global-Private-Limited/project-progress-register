@@ -401,7 +401,7 @@ paths:
       tags: [Tasks]
       operationId: listProjectTasks
       summary: List tasks in an authorized project
-      description: Admins may read every project. Members require current membership. Inactive projects remain readable.
+      description: Legacy singular task projection retained for compatibility. Admins may read every project; Members require current membership. If V2 has assigned multiple Members, responsible_member is the deterministic first assignment only.
       security: [{cookieSession: []}]
       parameters: [{$ref: '#/components/parameters/ProjectID'}]
       responses:
@@ -415,7 +415,7 @@ paths:
       tags: [Tasks]
       operationId: createTask
       summary: Create a task in an active project
-      description: Admins or current project Members may create. The authenticated user becomes immutable creator. Responsibility grants no access or edit ownership.
+      description: Legacy singular create retained for compatibility. Admins or current project Members may create. The authenticated user becomes immutable creator. Responsibility grants no access or edit ownership.
       security: [{cookieSession: []}]
       parameters:
         - {$ref: '#/components/parameters/ProjectID'}
@@ -439,7 +439,7 @@ paths:
       tags: [Tasks]
       operationId: getProjectTask
       summary: Get a task through authorized project scope
-      description: Unknown, mismatched, and inaccessible identifiers all return 404.
+      description: Legacy singular projection retained for compatibility. Unknown, mismatched, and inaccessible identifiers all return 404. If V2 has assigned multiple Members, responsible_member is the deterministic first assignment only.
       security: [{cookieSession: []}]
       parameters:
         - {$ref: '#/components/parameters/ProjectID'}
@@ -455,7 +455,7 @@ paths:
       tags: [Tasks]
       operationId: updateProjectTask
       summary: Replace mutable task fields
-      description: Admins may edit any task. A Member must be both current project Member and immutable creator. Requires an active project and expected version.
+      description: Legacy singular update retained for compatibility. Admins may edit any task; a Member must be both current project Member and immutable creator. Requires an active project and expected version. Returns 409 task_v2_required instead of discarding assignments when the task already has multiple responsible Members.
       security: [{cookieSession: []}]
       parameters:
         - {$ref: '#/components/parameters/ProjectID'}
@@ -468,6 +468,77 @@ paths:
         '200':
           description: Task updated and version incremented.
           content: {application/json: {schema: {$ref: '#/components/schemas/TaskResponse'}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v2/projects/{project_id}/tasks:
+    get:
+      tags: [Tasks]
+      operationId: listProjectTasksV2
+      summary: List tasks with all responsible Members
+      description: Additive V2 task projection. Authorization and name ordering match V1; every task returns the complete deterministic responsible_members array.
+      security: [{cookieSession: []}]
+      parameters: [{$ref: '#/components/parameters/ProjectID'}]
+      responses:
+        '200': {description: Name-ordered task list with complete assignments., content: {application/json: {schema: {$ref: '#/components/schemas/TasksV2Response'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [Tasks]
+      operationId: createTaskV2
+      summary: Create a task with zero or more responsible Members
+      description: Admins or current project Members may create. Every unique responsible_user_ids value must identify a current enabled project Member. Assignment grants no access or edit ownership.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateTaskV2Request'}}}
+      responses:
+        '201': {description: Task and complete assignment set created atomically at version one., content: {application/json: {schema: {$ref: '#/components/schemas/TaskV2Response'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+  /api/v2/projects/{project_id}/tasks/{task_id}:
+    get:
+      tags: [Tasks]
+      operationId: getProjectTaskV2
+      summary: Get a task with all responsible Members
+      description: Authorization and not-found concealment match V1. The response includes the complete deterministic assignment array.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+      responses:
+        '200': {description: Complete V2 task projection., content: {application/json: {schema: {$ref: '#/components/schemas/TaskV2Response'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Tasks]
+      operationId: updateProjectTaskV2
+      summary: Replace mutable task fields and the complete assignment set
+      description: Admins may edit any task; a Member must be its current project Member and immutable creator. The supplied responsible_user_ids array atomically replaces the set and expected_version prevents lost updates.
+      security: [{cookieSession: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ProjectID'}
+        - {$ref: '#/components/parameters/TaskID'}
+        - {$ref: '#/components/parameters/CSRFToken'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateTaskV2Request'}}}
+      responses:
+        '200': {description: Task fields and assignments replaced in one versioned transaction., content: {application/json: {schema: {$ref: '#/components/schemas/TaskV2Response'}}}}
         '400': {$ref: '#/components/responses/InvalidRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/Forbidden'}
@@ -966,6 +1037,40 @@ components:
         target_date:
           oneOf: [{type: string, format: date}, {type: 'null'}]
         expected_version: {type: integer, format: int64, minimum: 1}
+    CreateTaskV2Request:
+      type: object
+      additionalProperties: false
+      required: [name, goals_markdown, description_markdown]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 160}
+        goals_markdown: {type: string, maxLength: 20000, description: Maximum is enforced in UTF-8 bytes.}
+        description_markdown: {type: string, maxLength: 50000, description: Maximum is enforced in UTF-8 bytes.}
+        responsible_user_ids:
+          oneOf:
+            - type: array
+              uniqueItems: true
+              items: {type: string, format: uuid}
+            - type: 'null'
+          default: []
+          description: Complete initial assignment set; omitted or null is equivalent to an empty array.
+        target_date:
+          oneOf: [{type: string, format: date}, {type: 'null'}]
+    UpdateTaskV2Request:
+      type: object
+      additionalProperties: false
+      required: [name, goals_markdown, description_markdown, responsible_user_ids, target_date, expected_version]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 160}
+        goals_markdown: {type: string, maxLength: 20000}
+        description_markdown: {type: string, maxLength: 50000}
+        responsible_user_ids:
+          type: array
+          uniqueItems: true
+          items: {type: string, format: uuid}
+          description: Complete desired assignment set; use an empty array to remove all assignments.
+        target_date:
+          oneOf: [{type: string, format: date}, {type: 'null'}]
+        expected_version: {type: integer, format: int64, minimum: 1}
     User:
       type: object
       additionalProperties: false
@@ -1125,6 +1230,38 @@ components:
       additionalProperties: false
       required: [tasks]
       properties: {tasks: {type: array, items: {$ref: '#/components/schemas/Task'}}}
+    TaskV2:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, name, goals_markdown, goals_html, description_markdown, description_html, created_by, responsible_members, target_date, created_at, updated_at, version]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        name: {type: string}
+        goals_markdown: {type: string}
+        goals_html: {type: string, readOnly: true, description: Backend-rendered allowlist-sanitized HTML.}
+        description_markdown: {type: string}
+        description_html: {type: string, readOnly: true, description: Backend-rendered allowlist-sanitized HTML.}
+        created_by: {$ref: '#/components/schemas/TaskActor'}
+        responsible_members:
+          type: array
+          items: {$ref: '#/components/schemas/ResponsibleMember'}
+          description: Complete assignment set ordered by case-insensitive username then user ID. Assignment grants no access or ownership.
+        target_date:
+          oneOf: [{type: string, format: date}, {type: 'null'}]
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        version: {type: integer, format: int64, minimum: 1}
+    TaskV2Response:
+      type: object
+      additionalProperties: false
+      required: [task]
+      properties: {task: {$ref: '#/components/schemas/TaskV2'}}
+    TasksV2Response:
+      type: object
+      additionalProperties: false
+      required: [tasks]
+      properties: {tasks: {type: array, items: {$ref: '#/components/schemas/TaskV2'}}}
     ReportedLocation:
       type: object
       additionalProperties: false

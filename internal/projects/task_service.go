@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
 )
@@ -48,7 +49,25 @@ func (s *Service) CreateTask(ctx context.Context, actor identity.User, projectID
 	if err := requireApplicationAccess(actor); err != nil {
 		return Task{}, err
 	}
-	persistence, err := validateTask(input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, input.ResponsibleUserID, input.TargetDate)
+	responsibleUserIDs := []string{}
+	if input.ResponsibleUserID != nil {
+		if !taskUUIDPattern.MatchString(strings.TrimSpace(*input.ResponsibleUserID)) {
+			return Task{}, &ValidationError{Field: "responsible_user_id", Message: "must be a UUID or null"}
+		}
+		responsibleUserIDs = append(responsibleUserIDs, *input.ResponsibleUserID)
+	}
+	return s.createTask(ctx, actor, projectID, input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, responsibleUserIDs, input.TargetDate, audit)
+}
+
+func (s *Service) CreateTaskV2(ctx context.Context, actor identity.User, projectID string, input CreateTaskV2Input, audit AuditContext) (Task, error) {
+	if err := requireApplicationAccess(actor); err != nil {
+		return Task{}, err
+	}
+	return s.createTask(ctx, actor, projectID, input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, input.ResponsibleUserIDs, input.TargetDate, audit)
+}
+
+func (s *Service) createTask(ctx context.Context, actor identity.User, projectID, name, goals, description string, responsibleUserIDs []string, targetDate *string, audit AuditContext) (Task, error) {
+	persistence, err := validateTask(name, goals, description, responsibleUserIDs, targetDate)
 	if err != nil {
 		return Task{}, err
 	}
@@ -77,17 +96,39 @@ func (s *Service) UpdateTask(ctx context.Context, actor identity.User, projectID
 	if !input.ResponsibleUserID.Present {
 		return Task{}, &ValidationError{Field: "responsible_user_id", Message: "is required and may be null"}
 	}
-	if !input.TargetDate.Present {
+	responsibleUserIDs := []string{}
+	if input.ResponsibleUserID.Value != nil {
+		if !taskUUIDPattern.MatchString(strings.TrimSpace(*input.ResponsibleUserID.Value)) {
+			return Task{}, &ValidationError{Field: "responsible_user_id", Message: "must be a UUID or null"}
+		}
+		responsibleUserIDs = append(responsibleUserIDs, *input.ResponsibleUserID.Value)
+	}
+	return s.updateTask(ctx, actor, projectID, taskID, input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, responsibleUserIDs, input.TargetDate, input.ExpectedVersion, true, audit)
+}
+
+func (s *Service) UpdateTaskV2(ctx context.Context, actor identity.User, projectID, taskID string, input UpdateTaskV2Input, audit AuditContext) (Task, error) {
+	if err := requireApplicationAccess(actor); err != nil {
+		return Task{}, err
+	}
+	if input.ResponsibleUserIDs == nil {
+		return Task{}, &ValidationError{Field: "responsible_user_ids", Message: "is required and must be an array"}
+	}
+	return s.updateTask(ctx, actor, projectID, taskID, input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, *input.ResponsibleUserIDs, input.TargetDate, input.ExpectedVersion, false, audit)
+}
+
+func (s *Service) updateTask(ctx context.Context, actor identity.User, projectID, taskID, name, goals, description string, responsibleUserIDs []string, targetDate NullableString, expectedVersion int64, legacySingular bool, audit AuditContext) (Task, error) {
+	if !targetDate.Present {
 		return Task{}, &ValidationError{Field: "target_date", Message: "is required and may be null"}
 	}
-	persistence, err := validateTask(input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, input.ResponsibleUserID.Value, input.TargetDate.Value)
+	persistence, err := validateTask(name, goals, description, responsibleUserIDs, targetDate.Value)
 	if err != nil {
 		return Task{}, err
 	}
-	if input.ExpectedVersion < 1 {
+	if expectedVersion < 1 {
 		return Task{}, &ValidationError{Field: "expected_version", Message: "must be a positive integer"}
 	}
-	persistence.ExpectedVersion = input.ExpectedVersion
+	persistence.ExpectedVersion = expectedVersion
+	persistence.LegacySingular = legacySingular
 	goalsHTML, descriptionHTML, err := s.renderTaskMarkdown(persistence.GoalsMarkdown, persistence.DescriptionMarkdown)
 	if err != nil {
 		return Task{}, err
@@ -96,7 +137,7 @@ func (s *Service) UpdateTask(ctx context.Context, actor identity.User, projectID
 	if errors.Is(err, ErrNotFound) {
 		return Task{}, s.auditTaskDenied(ctx, actor, projectID, taskID, audit, "task_not_accessible_or_not_owner")
 	}
-	if errors.Is(err, ErrConflict) || errors.Is(err, ErrInactiveProject) || errors.Is(err, ErrInvalidResponsible) {
+	if errors.Is(err, ErrConflict) || errors.Is(err, ErrInactiveProject) || errors.Is(err, ErrInvalidResponsible) || errors.Is(err, ErrTaskV2Required) {
 		return Task{}, err
 	}
 	if err != nil {

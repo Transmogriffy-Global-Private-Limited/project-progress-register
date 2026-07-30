@@ -35,6 +35,7 @@ const (
 	AdminAuditAPIPath         = "/api/v1/admin/audit"
 	DashboardAPIPath          = "/api/v1/dashboard"
 	ProjectsAPIPath           = "/api/v1/projects"
+	ProjectsV2APIPath         = "/api/v2/projects"
 	SessionCookie             = "ppr_session"
 )
 
@@ -73,6 +74,10 @@ func ContractRoutes() []Route {
 		{Method: http.MethodPost, Path: ProjectsAPIPath + "/{project_id}/tasks"},
 		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}"},
 		{Method: http.MethodPatch, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}"},
+		{Method: http.MethodGet, Path: ProjectsV2APIPath + "/{project_id}/tasks"},
+		{Method: http.MethodPost, Path: ProjectsV2APIPath + "/{project_id}/tasks"},
+		{Method: http.MethodGet, Path: ProjectsV2APIPath + "/{project_id}/tasks/{task_id}"},
+		{Method: http.MethodPatch, Path: ProjectsV2APIPath + "/{project_id}/tasks/{task_id}"},
 		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates"},
 		{Method: http.MethodPost, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates"},
 		{Method: http.MethodGet, Path: ProjectsAPIPath + "/{project_id}/tasks/{task_id}/progress-updates/{update_id}"},
@@ -126,6 +131,8 @@ type ProjectAccess interface {
 	GetTask(context.Context, identity.User, string, string, projects.AuditContext) (projects.Task, error)
 	CreateTask(context.Context, identity.User, string, projects.CreateTaskInput, projects.AuditContext) (projects.Task, error)
 	UpdateTask(context.Context, identity.User, string, string, projects.UpdateTaskInput, projects.AuditContext) (projects.Task, error)
+	CreateTaskV2(context.Context, identity.User, string, projects.CreateTaskV2Input, projects.AuditContext) (projects.Task, error)
+	UpdateTaskV2(context.Context, identity.User, string, string, projects.UpdateTaskV2Input, projects.AuditContext) (projects.Task, error)
 	GetCurrentAssessment(context.Context, identity.User, string, string, projects.AuditContext) (*projects.Assessment, error)
 	ListAssessments(context.Context, identity.User, string, string, projects.AuditContext) ([]projects.Assessment, error)
 	SetAssessment(context.Context, identity.User, string, string, projects.SetAssessmentInput, projects.AuditContext) (projects.Assessment, error)
@@ -205,6 +212,7 @@ func New(options Options) (http.Handler, error) {
 		http.MethodGet: listProjectsAPIHandler(options), http.MethodPost: createProjectAPIHandler(options),
 	}))
 	mux.HandleFunc(ProjectsAPIPath+"/", projectAPIRouter(options))
+	mux.HandleFunc(ProjectsV2APIPath+"/", taskV2APIRouter(options))
 
 	if options.APIDocsEnabled {
 		openAPIDocument, err := openapiv1.DocumentForBasePath(options.BasePath)

@@ -252,6 +252,23 @@ func (fakeProjects) CreateTask(_ context.Context, actor identity.User, projectID
 func (fakeProjects) UpdateTask(_ context.Context, actor identity.User, projectID, taskID string, input projects.UpdateTaskInput, _ projects.AuditContext) (projects.Task, error) {
 	return projects.Task{ID: taskID, ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: projects.TaskActor{UserID: actor.ID, Username: actor.Username}, Version: input.ExpectedVersion + 1}, nil
 }
+func (fakeProjects) CreateTaskV2(_ context.Context, actor identity.User, projectID string, input projects.CreateTaskV2Input, _ projects.AuditContext) (projects.Task, error) {
+	responsible := make([]projects.ResponsibleMember, len(input.ResponsibleUserIDs))
+	for index, id := range input.ResponsibleUserIDs {
+		responsible[index] = projects.ResponsibleMember{UserID: id, Username: "member", Enabled: true}
+	}
+	return projects.Task{ID: testTaskID, ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: projects.TaskActor{UserID: actor.ID, Username: actor.Username}, ResponsibleMembers: responsible, Version: 1}, nil
+}
+func (fakeProjects) UpdateTaskV2(_ context.Context, actor identity.User, projectID, taskID string, input projects.UpdateTaskV2Input, _ projects.AuditContext) (projects.Task, error) {
+	responsible := []projects.ResponsibleMember{}
+	if input.ResponsibleUserIDs == nil {
+		return projects.Task{}, &projects.ValidationError{Field: "responsible_user_ids", Message: "is required and must be an array"}
+	}
+	for _, id := range *input.ResponsibleUserIDs {
+		responsible = append(responsible, projects.ResponsibleMember{UserID: id, Username: "member", Enabled: true})
+	}
+	return projects.Task{ID: taskID, ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: projects.TaskActor{UserID: actor.ID, Username: actor.Username}, ResponsibleMembers: responsible, Version: input.ExpectedVersion + 1}, nil
+}
 func (fakeProjects) GetCurrentAssessment(context.Context, identity.User, string, string, projects.AuditContext) (*projects.Assessment, error) {
 	return nil, nil
 }

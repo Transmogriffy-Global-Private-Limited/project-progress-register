@@ -20,6 +20,7 @@ var (
 	ErrInvalidMember          = errors.New("target is not an enabled Member")
 	ErrInactiveProject        = errors.New("project is inactive")
 	ErrInvalidResponsible     = errors.New("responsible user is not a current enabled project Member")
+	ErrTaskV2Required         = errors.New("task has multiple responsibilities and requires the V2 task API")
 )
 
 type ValidationError struct {
