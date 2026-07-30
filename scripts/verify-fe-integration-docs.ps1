@@ -42,6 +42,8 @@ $requiredGuidance = @(
     'must_change_password',
     'next_cursor',
     'invalid_responsible_member',
+    'task_v2_required',
+    'responsible_user_ids',
     'attachment_pending',
     'project_inactive',
     'content_path'

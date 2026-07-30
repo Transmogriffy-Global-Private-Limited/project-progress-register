@@ -2,6 +2,7 @@ package projects
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -11,27 +12,38 @@ import (
 const taskProjection = `
 	SELECT t.id::text, t.project_id::text, t.name, t.goals_markdown, t.description_markdown,
 	       creator.id::text, creator.username,
-	       COALESCE(responsible.id::text, ''), COALESCE(responsible.username, ''), COALESCE(responsible.enabled, false),
+	       COALESCE(responsibilities.members, '[]'::jsonb),
 	       COALESCE(t.target_date::text, ''), t.created_at, t.updated_at, t.version
 	FROM public.tasks t
 	JOIN public.users creator ON creator.id = t.created_by
-	LEFT JOIN public.users responsible ON responsible.id = t.responsible_user_id`
+	LEFT JOIN LATERAL (
+		SELECT jsonb_agg(
+			jsonb_build_object('user_id', u.id, 'username', u.username, 'enabled', u.enabled)
+			ORDER BY lower(u.username), u.id
+		) AS members
+		FROM public.task_responsibilities tr
+		JOIN public.users u ON u.id = tr.user_id
+		WHERE tr.task_id = t.id
+	) responsibilities ON true`
 
 func scanTask(row scanner) (Task, error) {
 	var task Task
-	var responsibleID, responsibleUsername, targetDate string
-	var responsibleEnabled bool
+	var responsibleMembers []byte
+	var targetDate string
 	err := row.Scan(
 		&task.ID, &task.ProjectID, &task.Name, &task.GoalsMarkdown, &task.DescriptionMarkdown,
 		&task.CreatedBy.UserID, &task.CreatedBy.Username,
-		&responsibleID, &responsibleUsername, &responsibleEnabled,
+		&responsibleMembers,
 		&targetDate, &task.CreatedAt, &task.UpdatedAt, &task.Version,
 	)
 	if err != nil {
 		return Task{}, err
 	}
-	if responsibleID != "" {
-		task.ResponsibleMember = &ResponsibleMember{UserID: responsibleID, Username: responsibleUsername, Enabled: responsibleEnabled}
+	if err := json.Unmarshal(responsibleMembers, &task.ResponsibleMembers); err != nil {
+		return Task{}, fmt.Errorf("decode task responsible Members: %w", err)
+	}
+	if task.ResponsibleMembers == nil {
+		task.ResponsibleMembers = []ResponsibleMember{}
 	}
 	if targetDate != "" {
 		task.TargetDate = &targetDate
@@ -103,20 +115,24 @@ func (r *PostgresRepository) CreateTask(ctx context.Context, actorID string, adm
 	if err := lockAuthorizedProject(ctx, tx, projectID, actorID, admin, true); err != nil {
 		return Task{}, err
 	}
-	responsibleID, err := validateResponsibleMember(ctx, tx, projectID, input.ResponsibleUserID)
+	responsibleIDs, err := validateResponsibleMembers(ctx, tx, projectID, input.ResponsibleUserIDs)
 	if err != nil {
 		return Task{}, err
 	}
 	var taskID string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO public.tasks
-			(project_id, name, goals_markdown, description_markdown, created_by, responsible_user_id, target_date)
-		VALUES ($1::uuid, $2, $3, $4, $5::uuid, NULLIF($6, '')::uuid, NULLIF($7, '')::date)
-		RETURNING id::text`, projectID, input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, actorID, responsibleID, input.TargetDate).Scan(&taskID)
+			(project_id, name, goals_markdown, description_markdown, created_by, target_date)
+		VALUES ($1::uuid, $2, $3, $4, $5::uuid, NULLIF($6, '')::date)
+		RETURNING id::text`, projectID, input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, actorID, input.TargetDate).Scan(&taskID)
 	if err != nil {
 		return Task{}, fmt.Errorf("insert task: %w", err)
 	}
+	if err := replaceTaskResponsibilities(ctx, tx, taskID, responsibleIDs); err != nil {
+		return Task{}, err
+	}
 	event.TargetID = taskID
+	event.Details["responsible_user_ids"] = responsibleIDs
 	if err := insertAudit(ctx, tx, event); err != nil {
 		return Task{}, err
 	}
@@ -140,11 +156,15 @@ func (r *PostgresRepository) UpdateTask(ctx context.Context, actorID string, adm
 		return Task{}, err
 	}
 	var currentVersion int64
-	var previousName, previousGoals, previousDescription, previousResponsibleID, previousTargetDate string
+	var previousName, previousGoals, previousDescription, previousTargetDate string
+	var previousResponsibleIDs []string
 	err = tx.QueryRow(ctx, `
-		SELECT version,name,goals_markdown,description_markdown,COALESCE(responsible_user_id::text,''),COALESCE(target_date::text,'') FROM public.tasks
-		WHERE id = $1::uuid AND project_id = $2::uuid AND ($4::boolean OR created_by = $3::uuid)
-		FOR UPDATE`, taskID, projectID, actorID, admin).Scan(&currentVersion, &previousName, &previousGoals, &previousDescription, &previousResponsibleID, &previousTargetDate)
+		SELECT t.version,t.name,t.goals_markdown,t.description_markdown,
+		       ARRAY(SELECT tr.user_id::text FROM public.task_responsibilities tr WHERE tr.task_id=t.id ORDER BY tr.user_id),
+		       COALESCE(t.target_date::text,'')
+		FROM public.tasks t
+		WHERE t.id = $1::uuid AND t.project_id = $2::uuid AND ($4::boolean OR t.created_by = $3::uuid)
+		FOR UPDATE`, taskID, projectID, actorID, admin).Scan(&currentVersion, &previousName, &previousGoals, &previousDescription, &previousResponsibleIDs, &previousTargetDate)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Task{}, ErrNotFound
 	}
@@ -154,36 +174,43 @@ func (r *PostgresRepository) UpdateTask(ctx context.Context, actorID string, adm
 	if currentVersion != input.ExpectedVersion {
 		return Task{}, ErrConflict
 	}
-	responsibleID, err := validateResponsibleMember(ctx, tx, projectID, input.ResponsibleUserID)
+	if input.LegacySingular && len(previousResponsibleIDs) > 1 {
+		return Task{}, ErrTaskV2Required
+	}
+	responsibleIDs, err := validateResponsibleMembers(ctx, tx, projectID, input.ResponsibleUserIDs)
 	if err != nil {
 		return Task{}, err
 	}
 	_, err = tx.Exec(ctx, `
 		UPDATE public.tasks
 		SET name = $3, goals_markdown = $4, description_markdown = $5,
-		    responsible_user_id = NULLIF($6, '')::uuid, target_date = NULLIF($7, '')::date,
+		    target_date = NULLIF($6, '')::date,
 		    updated_at = clock_timestamp(), version = version + 1
 		WHERE id = $1::uuid AND project_id = $2::uuid`,
-		taskID, projectID, input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, responsibleID, input.TargetDate)
+		taskID, projectID, input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, input.TargetDate)
 	if err != nil {
 		return Task{}, fmt.Errorf("update task: %w", err)
+	}
+	if err := replaceTaskResponsibilities(ctx, tx, taskID, responsibleIDs); err != nil {
+		return Task{}, err
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO public.task_revisions(
 			task_id,from_version,to_version,
-			previous_name,previous_goals_markdown,previous_description_markdown,previous_responsible_user_id,previous_target_date,
-			new_name,new_goals_markdown,new_description_markdown,new_responsible_user_id,new_target_date,change_reason,edited_by
+			previous_name,previous_goals_markdown,previous_description_markdown,previous_responsible_user_ids,previous_target_date,
+			new_name,new_goals_markdown,new_description_markdown,new_responsible_user_ids,new_target_date,change_reason,edited_by
 		) VALUES(
 			$1::uuid,$2,$3,
-			$4,$5,$6,NULLIF($7,'')::uuid,NULLIF($8,'')::date,
-			$9,$10,$11,NULLIF($12,'')::uuid,NULLIF($13,'')::date,'user_edit',$14::uuid
+			$4,$5,$6,$7::uuid[],NULLIF($8,'')::date,
+			$9,$10,$11,$12::uuid[],NULLIF($13,'')::date,'user_edit',$14::uuid
 		)`, taskID, currentVersion, currentVersion+1,
-		previousName, previousGoals, previousDescription, previousResponsibleID, previousTargetDate,
-		input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, responsibleID, input.TargetDate, actorID); err != nil {
+		previousName, previousGoals, previousDescription, previousResponsibleIDs, previousTargetDate,
+		input.Name, input.GoalsMarkdown, input.DescriptionMarkdown, responsibleIDs, input.TargetDate, actorID); err != nil {
 		return Task{}, fmt.Errorf("insert task revision: %w", err)
 	}
 	event.Details["from_version"] = currentVersion
 	event.Details["to_version"] = currentVersion + 1
+	event.Details["responsible_user_ids"] = responsibleIDs
 	if err := insertAudit(ctx, tx, event); err != nil {
 		return Task{}, err
 	}
@@ -220,25 +247,50 @@ func lockAuthorizedProject(ctx context.Context, tx pgx.Tx, projectID, actorID st
 	return nil
 }
 
-func validateResponsibleMember(ctx context.Context, tx pgx.Tx, projectID, responsibleUserID string) (string, error) {
-	if responsibleUserID == "" {
-		return "", nil
+func validateResponsibleMembers(ctx context.Context, tx pgx.Tx, projectID string, responsibleUserIDs []string) ([]string, error) {
+	if len(responsibleUserIDs) == 0 {
+		return []string{}, nil
 	}
-	var id string
-	err := tx.QueryRow(ctx, `
+	rows, err := tx.Query(ctx, `
 		SELECT u.id::text
 		FROM public.users u
-		WHERE u.id = $2::uuid AND u.enabled = true AND u.role = 'member'
+		WHERE u.id = ANY($2::uuid[]) AND u.enabled = true AND u.role = 'member'
 		  AND EXISTS (
 			SELECT 1 FROM public.project_members pm
 			WHERE pm.project_id = $1::uuid AND pm.user_id = u.id AND pm.removed_at IS NULL
 		  )
-		FOR SHARE`, projectID, responsibleUserID).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", ErrInvalidResponsible
-	}
+		ORDER BY u.id
+		FOR SHARE`, projectID, responsibleUserIDs)
 	if err != nil {
-		return "", fmt.Errorf("validate responsible Member: %w", err)
+		return nil, fmt.Errorf("validate responsible Members: %w", err)
 	}
-	return id, nil
+	defer rows.Close()
+	validated := make([]string, 0, len(responsibleUserIDs))
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan responsible Member: %w", err)
+		}
+		validated = append(validated, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate responsible Members: %w", err)
+	}
+	if len(validated) != len(responsibleUserIDs) {
+		return nil, ErrInvalidResponsible
+	}
+	return validated, nil
+}
+
+func replaceTaskResponsibilities(ctx context.Context, tx pgx.Tx, taskID string, responsibleUserIDs []string) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM public.task_responsibilities WHERE task_id=$1::uuid AND NOT (user_id=ANY($2::uuid[]))`, taskID, responsibleUserIDs); err != nil {
+		return fmt.Errorf("remove task responsibilities: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO public.task_responsibilities(task_id,user_id)
+		SELECT $1::uuid, id FROM unnest($2::uuid[]) AS ids(id)
+		ON CONFLICT (task_id,user_id) DO NOTHING`, taskID, responsibleUserIDs); err != nil {
+		return fmt.Errorf("add task responsibilities: %w", err)
+	}
+	return nil
 }

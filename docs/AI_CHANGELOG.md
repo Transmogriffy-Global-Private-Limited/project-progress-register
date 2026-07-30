@@ -1,5 +1,16 @@
 # AI changelog
 
+## 2026-07-30 — Multiple task responsibilities implemented and verified locally
+
+Status: Verified locally; not deployed
+
+- Added migration `000008` with an authoritative task-responsibility join table, lossless migration of current and historical singular values, and complete responsible-user arrays in immutable task revisions.
+- Added shared plural task domain/persistence behavior and additive V2 list/create/detail/update routes. V2 atomically replaces the complete assignment set; V1 remains compatible for old integrations, deterministically projects one assignee, and returns `409 task_v2_required` instead of losing hidden assignments.
+- Preserved creator ownership, project membership scope, active-project enforcement, optimistic versions, transactional audit/revision writes, and membership-removal cleanup of only the removed Member.
+- Updated the authoritative OpenAPI and complete frontend handoff to 43 operations across 31 paths, plus API/domain/permission/architecture/timeline/PostgreSQL documentation and drift verification.
+- Verified lossless migration and the guarded V2/V1/timeline workflow on an explicitly disposable loopback PostgreSQL 17 target. Focused tests, OpenAPI validation, frontend drift validation, the full formatter/tidy/vet/test/build verifier, all-package race detection, and all three root/prefixed API-documentation smoke states pass.
+- Production and the VPS were not accessed. Nothing was committed, pushed, published, migrated, or deployed; production remains on migration `000007` until separately authorized.
+
 ## 2026-07-27 — Frontend handoff OpenAPI corrections deployed
 
 Status: Production rehost verified

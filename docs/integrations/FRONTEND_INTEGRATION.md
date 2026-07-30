@@ -2,7 +2,7 @@
 
 Status: Complete browser-integration handoff for the deployed v1 backend
 
-This is the one human-readable document a frontend engineer needs to build the complete Project Progress Register frontend. It covers the product model, browser transport, authentication, permissions, every request and response shape, all 39 HTTP operations, uploads, geolocation, concurrency, pagination, errors, recovery, and recommended screen data flows.
+This is the one human-readable document a frontend engineer needs to build the complete Project Progress Register frontend. It covers the product model, browser transport, authentication, permissions, every request and response shape, all 43 HTTP operations, uploads, geolocation, concurrency, pagination, errors, recovery, and recommended screen data flows.
 
 The machine-readable contract remains OpenAPI, but no other backend document is required to understand the integration described here.
 
@@ -251,7 +251,7 @@ The backend is always authoritative. The frontend should hide or disable impossi
 
 Important distinctions:
 
-- A responsible Member is display/work assignment only. Responsibility grants neither access nor edit ownership.
+- Responsible Members are display/work assignments only. Responsibility grants neither access nor edit ownership.
 - Membership controls Member access. Removing membership revokes future reads immediately.
 - Inactive projects remain readable but reject task/progress/review mutations with `409 project_inactive`.
 - Unknown, mismatched, and inaccessible nested IDs intentionally collapse to `404 not_found`.
@@ -337,11 +337,16 @@ interface Task {
   description_markdown: string;
   description_html: string;
   created_by: Actor;
-  responsible_member: ResponsibleMember | null;
+  responsible_members: ResponsibleMember[];
   target_date: CalendarDate | null;
   created_at: DateTime;
   updated_at: DateTime;
   version: number;
+}
+
+// Compatibility shape returned only by the retained V1 task endpoints.
+interface LegacyTaskV1 extends Omit<Task, "responsible_members"> {
+  responsible_member: ResponsibleMember | null;
 }
 
 interface ReportedLocation {
@@ -751,7 +756,7 @@ Admin-only, no body. Target must currently be an enabled `member` account. Retur
 
 #### DELETE `/api/v1/projects/{project_id}/members/{user_id}` — `removeProjectMember`
 
-Admin-only, no body. Returns `204` with no body. Access ends immediately. Any tasks assigned to that user have responsibility cleared and their versions incremented, so refresh project tasks after success.
+Admin-only, no body. Returns `204` with no body. Access ends immediately. The user is removed from every task assignment set; other assignees remain and each affected task version increments once, so refresh project tasks after success.
 
 #### PUT `/api/v1/projects/{project_id}/geofence` — `replaceProjectGeofence`
 
@@ -771,11 +776,13 @@ Returns `200 { geofence }`. Replacement creates a new immutable policy version; 
 
 ### 8.5 Tasks
 
-#### GET `/api/v1/projects/{project_id}/tasks` — `listProjectTasks`
+Use V2 for all new frontend task work. V1 remains only so the existing singular-assignment integration can migrate without an immediate contract break.
+
+#### GET `/api/v2/projects/{project_id}/tasks` — `listProjectTasksV2`
 
 Returns `200 { tasks: Task[] }`, name-ordered. Inactive projects remain readable.
 
-#### POST `/api/v1/projects/{project_id}/tasks` — `createTask`
+#### POST `/api/v2/projects/{project_id}/tasks` — `createTaskV2`
 
 Admin or current Member; active project required.
 
@@ -784,18 +791,18 @@ type CreateTaskRequest = {
   name: string;                       // nonblank, <=160
   goals_markdown: string;             // <=20,000 UTF-8 bytes
   description_markdown: string;       // <=50,000 UTF-8 bytes
-  responsible_user_id?: UUID | null;  // omit or null for none
+  responsible_user_ids?: UUID[] | null; // unique; omit, null, or [] for none
   target_date?: CalendarDate | null;   // omit or null for none
 };
 ```
 
-Returns `201 { task }`. The authenticated user becomes immutable creator. Invalid responsibility returns `422 invalid_responsible_member`.
+Returns `201 { task }`. The authenticated user becomes immutable creator. Every supplied ID must be a current enabled project Member. Duplicate IDs return `422 validation_failed`; an ineligible ID returns `422 invalid_responsible_member`.
 
-#### GET `/api/v1/projects/{project_id}/tasks/{task_id}` — `getProjectTask`
+#### GET `/api/v2/projects/{project_id}/tasks/{task_id}` — `getProjectTaskV2`
 
 Returns `200 { task }`. Unknown, wrong-parent, and inaccessible identifiers all return `404`.
 
-#### PATCH `/api/v1/projects/{project_id}/tasks/{task_id}` — `updateProjectTask`
+#### PATCH `/api/v2/projects/{project_id}/tasks/{task_id}` — `updateProjectTaskV2`
 
 Admin or immutable Member creator; active project required. Send every mutable field and explicit nulls:
 
@@ -804,13 +811,24 @@ type UpdateTaskRequest = {
   name: string;
   goals_markdown: string;
   description_markdown: string;
-  responsible_user_id: UUID | null;
+  responsible_user_ids: UUID[]; // complete desired set; [] removes all
   target_date: CalendarDate | null;
   expected_version: number;
 };
 ```
 
 Returns `200 { task }` and increments version. `409 conflict` means refetch before allowing another save. A non-owner Member receives scoped `404`, not `403`.
+
+Assignment replacement is atomic with the other task fields, immutable revision, version increment, and audit event. `responsible_members` is always the complete array, ordered by case-insensitive username then user ID. Assignment never grants access or edit ownership.
+
+V1 compatibility operations remain documented and callable:
+
+- GET `/api/v1/projects/{project_id}/tasks` — `listProjectTasks`
+- POST `/api/v1/projects/{project_id}/tasks` — `createTask`
+- GET `/api/v1/projects/{project_id}/tasks/{task_id}` — `getProjectTask`
+- PATCH `/api/v1/projects/{project_id}/tasks/{task_id}` — `updateProjectTask`
+
+They retain `responsible_user_id?: UUID | null` on create, required nullable `responsible_user_id` on update, and `responsible_member: ResponsibleMember | null` in `LegacyTaskV1`. If V2 has assigned multiple Members, V1 reads expose only the deterministic first compatibility member and V1 update returns `409 task_v2_required`; it never silently removes the hidden assignments. Do not build new screens against V1.
 
 ### 8.6 Progress, geolocation, and attachments
 
@@ -995,8 +1013,8 @@ Timeline metadata by action:
 
 | Action | Metadata |
 |---|---|
-| `task.created` | `version`, `name`, `goals_markdown/html`, `description_markdown/html`, `responsible_user_id`, `target_date` |
-| `task.updated` | `from_version`, `to_version`, `change_reason`, `before`, `after`; both snapshots contain name, Markdown/HTML, responsible ID, target date |
+| `task.created` | `version`, `name`, `goals_markdown/html`, `description_markdown/html`, complete `responsible_user_ids`, singular compatibility `responsible_user_id`, `target_date` |
+| `task.updated` | `from_version`, `to_version`, `change_reason`, `before`, `after`; both snapshots contain name, Markdown/HTML, complete responsible ID arrays, singular compatibility ID, target date |
 | `progress.created` | `version`, `content_markdown/html`, `location_status`, `location_reason`, `reported_location` |
 | `progress.updated` | `from_version`, `to_version`, previous/new Markdown and HTML |
 | `attachment.added` | progress ID, name, detected MIME, media kind, source, verification, size, SHA-256, historical `storage_state="pending"`, empty failure reason |
@@ -1035,6 +1053,7 @@ Handle by `error.code`, with status as the transport class:
 | 409 | `conflict` | Reload current resource; for idempotency misuse, create a new logical submission/key only after user review. |
 | 409 | `last_admin` | Explain that one enabled Admin must remain. |
 | 409 | `project_inactive` | Keep page readable; disable mutation controls and refresh project. |
+| 409 | `task_v2_required` | A legacy V1 edit encountered multiple assignments; reload and edit through the V2 task contract. |
 | 410 | `attachment_unavailable` | Attachment metadata remains but bytes cannot be downloaded. |
 | 413 | `request_too_large` | Keep draft; ask user to reduce files/size. |
 | 415 | `unsupported_media_type` | Fix request content type or reject unsupported selected file. |
@@ -1066,7 +1085,7 @@ Only retry GET requests automatically. Explicitly idempotent safe mutation retri
 Fetch in parallel:
 
 - `GET /projects/{project_id}`
-- `GET /projects/{project_id}/tasks`
+- `GET /api/v2/projects/{project_id}/tasks`
 - Admin only: `GET /projects/{project_id}/members`
 
 After project update/geofence change, replace the project from the mutation response. After membership removal, refetch members and tasks because responsibility may have been cleared/versioned.
@@ -1075,7 +1094,7 @@ After project update/geofence change, replace the project from the mutation resp
 
 Fetch in parallel:
 
-- task detail;
+- V2 task detail (`GET /api/v2/projects/{project_id}/tasks/{task_id}`);
 - progress list;
 - accepted suggestions;
 - current assessment;
@@ -1153,4 +1172,5 @@ Polling is optional product behavior, not a backend requirement. Use conservativ
 - [ ] Protected `401` clears all private client state.
 - [ ] One-time credentials are never persisted or recoverably displayed later.
 - [ ] No UI invents unsupported project/task statuses, deletion, or “needs progress.”
-- [ ] Every one of the 39 operation IDs in this guide has an integration call or an intentional operator-only exclusion.
+- [ ] New task screens use V2 and retain the complete `responsible_user_ids` replacement set.
+- [ ] Every one of the 43 operation IDs in this guide has an integration call or an intentional operator-only exclusion.

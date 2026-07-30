@@ -94,32 +94,51 @@ try {
         if ($membership.StatusCode -ne 201) { throw "membership add returned $($membership.StatusCode)" }
     }
 
-    $createTask = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/tasks" -Method Post -Body @{ name = 'Foundation'; goals_markdown = '**Safe goal** [bad](javascript:alert(1))'; description_markdown = '<script>alert(1)</script> useful'; responsible_user_id = $other.ID; target_date = '2026-08-01' } -Session $creator.Session -CSRFToken $creator.Response.csrf_token
+    $createTask = Invoke-JSON -Uri "$baseURL/api/v2/projects/$projectID/tasks" -Method Post -Body @{ name = 'Foundation'; goals_markdown = '**Safe goal** [bad](javascript:alert(1))'; description_markdown = '<script>alert(1)</script> useful'; responsible_user_ids = @($creator.ID, $other.ID); target_date = '2026-08-01' } -Session $creator.Session -CSRFToken $creator.Response.csrf_token
     if ($createTask.StatusCode -ne 201) { throw "task create returned $($createTask.StatusCode)" }
     $task = ($createTask.Content | ConvertFrom-Json).task
     if ($task.goals_html -match '(?i)javascript:' -or $task.description_html -match '(?i)<script') { throw 'unsafe Markdown survived sanitization' }
-    if ($task.created_by.user_id -ne $creator.ID -or $task.responsible_member.user_id -ne $other.ID) { throw 'task ownership or responsibility projection was incorrect' }
+    if ($task.created_by.user_id -ne $creator.ID -or $task.responsible_members.Count -ne 2) { throw 'task ownership or plural responsibility projection was incorrect' }
 
-    $otherRead = Invoke-WebRequest -Uri "$baseURL/api/v1/projects/$projectID/tasks/$($task.id)" -WebSession $other.Session -SkipHttpErrorCheck
+    $otherRead = Invoke-WebRequest -Uri "$baseURL/api/v2/projects/$projectID/tasks/$($task.id)" -WebSession $other.Session -SkipHttpErrorCheck
     if ($otherRead.StatusCode -ne 200) { throw "responsible Member read returned $($otherRead.StatusCode)" }
-    $otherEdit = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/tasks/$($task.id)" -Method Patch -Body @{ name = 'Hijacked'; goals_markdown = ''; description_markdown = ''; responsible_user_id = $null; target_date = $null; expected_version = 1 } -Session $other.Session -CSRFToken $other.Response.csrf_token
+    $otherEdit = Invoke-JSON -Uri "$baseURL/api/v2/projects/$projectID/tasks/$($task.id)" -Method Patch -Body @{ name = 'Hijacked'; goals_markdown = ''; description_markdown = ''; responsible_user_ids = @(); target_date = $null; expected_version = 1 } -Session $other.Session -CSRFToken $other.Response.csrf_token
     if ($otherEdit.StatusCode -ne 404) { throw "non-owner edit returned $($otherEdit.StatusCode)" }
 
-    $creatorEdit = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/tasks/$($task.id)" -Method Patch -Body @{ name = 'Foundation updated'; goals_markdown = 'Updated'; description_markdown = 'Updated'; responsible_user_id = $null; target_date = $null; expected_version = 1 } -Session $creator.Session -CSRFToken $creator.Response.csrf_token
-    if ($creatorEdit.StatusCode -ne 200 -or ($creatorEdit.Content | ConvertFrom-Json).task.version -ne 2) { throw "creator edit returned $($creatorEdit.StatusCode)" }
-    $staleEdit = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/tasks/$($task.id)" -Method Patch -Body @{ name = 'Stale'; goals_markdown = ''; description_markdown = ''; responsible_user_id = $null; target_date = $null; expected_version = 1 } -Session $admin.Session -CSRFToken $admin.Response.csrf_token
+    $legacyRead = Invoke-WebRequest -Uri "$baseURL/api/v1/projects/$projectID/tasks/$($task.id)" -WebSession $creator.Session -SkipHttpErrorCheck
+    if ($legacyRead.StatusCode -ne 200 -or $null -eq ($legacyRead.Content | ConvertFrom-Json).task.responsible_member) { throw 'V1 compatibility projection failed' }
+    $legacyEdit = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/tasks/$($task.id)" -Method Patch -Body @{ name = 'Unsafe flatten'; goals_markdown = ''; description_markdown = ''; responsible_user_id = $other.ID; target_date = $null; expected_version = 1 } -Session $creator.Session -CSRFToken $creator.Response.csrf_token
+    if ($legacyEdit.StatusCode -ne 409 -or ($legacyEdit.Content | ConvertFrom-Json).error.code -ne 'task_v2_required') { throw "V1 multiple-assignment edit returned $($legacyEdit.StatusCode)" }
+
+    $creatorEdit = Invoke-JSON -Uri "$baseURL/api/v2/projects/$projectID/tasks/$($task.id)" -Method Patch -Body @{ name = 'Foundation updated'; goals_markdown = 'Updated'; description_markdown = 'Updated'; responsible_user_ids = @($other.ID); target_date = $null; expected_version = 1 } -Session $creator.Session -CSRFToken $creator.Response.csrf_token
+    $updatedTask = ($creatorEdit.Content | ConvertFrom-Json).task
+    if ($creatorEdit.StatusCode -ne 200 -or $updatedTask.version -ne 2 -or $updatedTask.responsible_members.Count -ne 1 -or $updatedTask.responsible_members[0].user_id -ne $other.ID) { throw "creator edit returned $($creatorEdit.StatusCode)" }
+    $staleEdit = Invoke-JSON -Uri "$baseURL/api/v2/projects/$projectID/tasks/$($task.id)" -Method Patch -Body @{ name = 'Stale'; goals_markdown = ''; description_markdown = ''; responsible_user_ids = @(); target_date = $null; expected_version = 1 } -Session $admin.Session -CSRFToken $admin.Response.csrf_token
     if ($staleEdit.StatusCode -ne 409) { throw "stale task edit returned $($staleEdit.StatusCode)" }
+
+    $removeResponsible = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/members/$($other.ID)" -Method Delete -Body $null -Session $admin.Session -CSRFToken $admin.Response.csrf_token
+    $afterRemoval = Invoke-WebRequest -Uri "$baseURL/api/v2/projects/$projectID/tasks/$($task.id)" -WebSession $admin.Session -SkipHttpErrorCheck
+    $afterRemovalTask = ($afterRemoval.Content | ConvertFrom-Json).task
+    if ($removeResponsible.StatusCode -ne 204 -or $afterRemoval.StatusCode -ne 200 -or $afterRemovalTask.version -ne 3 -or $afterRemovalTask.responsible_members.Count -ne 0) { throw 'membership removal did not version and clear the remaining task assignment' }
+
+    $timeline = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/tasks/$($task.id)/timeline" -Method Get -Body $null -Session $admin.Session
+    $timelineBody = $timeline.Content | ConvertFrom-Json
+    $createdEvent = @($timelineBody.timeline | Where-Object action -eq 'task.created')[0]
+    $updatedEvents = @($timelineBody.timeline | Where-Object action -eq 'task.updated')
+    if ($timeline.StatusCode -ne 200 -or $createdEvent.metadata.responsible_user_ids.Count -ne 2 -or $null -eq $createdEvent.metadata.responsible_user_id -or $updatedEvents.Count -ne 2) { throw 'timeline did not preserve plural and singular-compatible task assignment chronology' }
+    $membershipRemovalEvent = $updatedEvents[-1]
+    if ($membershipRemovalEvent.metadata.before.responsible_user_ids.Count -ne 1 -or $membershipRemovalEvent.metadata.after.responsible_user_ids.Count -ne 0 -or $null -ne $membershipRemovalEvent.metadata.after.responsible_user_id) { throw 'timeline membership-removal snapshot was incorrect' }
 
     $deactivate = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID" -Method Patch -Body @{ name = $project.name; description_markdown = $project.description_markdown; active = $false; expected_version = $project.version } -Session $admin.Session -CSRFToken $admin.Response.csrf_token
     if ($deactivate.StatusCode -ne 200) { throw "project deactivation returned $($deactivate.StatusCode)" }
-    $inactiveCreate = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/tasks" -Method Post -Body @{ name = 'Blocked task'; goals_markdown = ''; description_markdown = ''; responsible_user_id = $null; target_date = $null } -Session $creator.Session -CSRFToken $creator.Response.csrf_token
+    $inactiveCreate = Invoke-JSON -Uri "$baseURL/api/v2/projects/$projectID/tasks" -Method Post -Body @{ name = 'Blocked task'; goals_markdown = ''; description_markdown = ''; responsible_user_ids = @(); target_date = $null } -Session $creator.Session -CSRFToken $creator.Response.csrf_token
     if ($inactiveCreate.StatusCode -ne 409 -or ($inactiveCreate.Content | ConvertFrom-Json).error.code -ne 'project_inactive') { throw "inactive project task create returned $($inactiveCreate.StatusCode)" }
 
-    [pscustomobject]@{ TaskCreate = 201; SafeMarkdown = $true; ResponsibleRead = 200; NonOwnerEdit = 404; CreatorEdit = 200; StaleConflict = 409; InactiveProjectCreate = 409 }
+    [pscustomobject]@{ TaskCreateV2 = 201; MultipleResponsibilities = 2; V1CompatibilityRead = 200; V1UnsafeFlattenRejected = 409; SafeMarkdown = $true; ResponsibleRead = 200; NonOwnerEdit = 404; CreatorEditV2 = 200; MembershipRemovalClearsOne = $true; TimelineAssignmentHistory = $true; StaleConflict = 409; InactiveProjectCreate = 409 }
 }
 finally {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id; $process.WaitForExit() }
 }
 
-& psql $databaseURL -X -v ON_ERROR_STOP=1 -At -F ' | ' -c "SELECT (SELECT count(*) FROM public.tasks), (SELECT count(*) FROM public.audit_events WHERE action IN ('task.created','task.updated','authorization.task_denied'));"
+& psql $databaseURL -X -v ON_ERROR_STOP=1 -At -F ' | ' -c "SELECT (SELECT count(*) FROM public.tasks), (SELECT count(*) FROM public.task_responsibilities), (SELECT count(*) FROM public.audit_events WHERE action IN ('task.created','task.updated','authorization.task_denied'));"
 if ($LASTEXITCODE -ne 0) { throw 'task-register persistence inspection failed' }

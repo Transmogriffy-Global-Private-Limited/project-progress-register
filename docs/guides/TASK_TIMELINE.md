@@ -16,7 +16,7 @@ The stream uses stable source-derived IDs and includes:
 - `comment.created` and `suggestion.accepted`;
 - every `assessment.created` version.
 
-Each event contains `action`, `entity_type`, `entity_id`, actor identity, server time, and action-specific `metadata`. Migration `000007` makes task edits as reconstructable as progress edits by storing their complete before/after mutable field sets in the same transaction as the current-row update and audit event. `attachment.added` records the creation-time `pending` state; later availability or failure is represented by its own event rather than rewriting the earlier fact.
+Each event contains `action`, `entity_type`, `entity_id`, actor identity, server time, and action-specific `metadata`. Migration `000007` makes task edits as reconstructable as progress edits; migration `000008` extends those snapshots with complete `responsible_user_ids` arrays. The singular `responsible_user_id` remains as a deterministic compatibility value in task event metadata, while new clients must use the plural array. `attachment.added` records the creation-time `pending` state; later availability or failure is represented by its own event rather than rewriting the earlier fact.
 
 Metadata fields ending in `_markdown` receive a sibling `_html` value rendered through the backend allowlist sanitizer. Frontends may render only the HTML projection as HTML. Attachment metadata includes evidence classification, type, size, SHA-256, and storage state without exposing storage keys or filesystem paths.
 

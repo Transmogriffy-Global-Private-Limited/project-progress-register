@@ -83,10 +83,18 @@ func (*fakeRepository) GetTask(context.Context, string, bool, string, string) (T
 	return Task{}, ErrNotFound
 }
 func (*fakeRepository) CreateTask(_ context.Context, actorID string, _ bool, projectID string, input taskPersistenceInput, _ auditEvent) (Task, error) {
-	return Task{ID: "task-id", ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: TaskActor{UserID: actorID}, Version: 1}, nil
+	return Task{ID: "task-id", ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: TaskActor{UserID: actorID}, ResponsibleMembers: fakeResponsibleMembers(input.ResponsibleUserIDs), Version: 1}, nil
 }
 func (*fakeRepository) UpdateTask(_ context.Context, actorID string, _ bool, projectID, taskID string, input taskPersistenceInput, _ auditEvent) (Task, error) {
-	return Task{ID: taskID, ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: TaskActor{UserID: actorID}, Version: input.ExpectedVersion + 1}, nil
+	return Task{ID: taskID, ProjectID: projectID, Name: input.Name, GoalsMarkdown: input.GoalsMarkdown, DescriptionMarkdown: input.DescriptionMarkdown, CreatedBy: TaskActor{UserID: actorID}, ResponsibleMembers: fakeResponsibleMembers(input.ResponsibleUserIDs), Version: input.ExpectedVersion + 1}, nil
+}
+
+func fakeResponsibleMembers(ids []string) []ResponsibleMember {
+	result := make([]ResponsibleMember, len(ids))
+	for index, id := range ids {
+		result[index] = ResponsibleMember{UserID: id, Username: "member", Enabled: true}
+	}
+	return result
 }
 func (*fakeRepository) GetCurrentAssessment(context.Context, string, bool, string, string) (*Assessment, error) {
 	return nil, nil

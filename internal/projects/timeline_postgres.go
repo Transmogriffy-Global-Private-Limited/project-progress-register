@@ -31,20 +31,24 @@ func (r *PostgresRepository) GetTaskTimeline(ctx context.Context, actorID string
 			       jsonb_build_object('version',1,'name',COALESCE(first_revision.previous_name,t.name),
 			         'goals_markdown',COALESCE(first_revision.previous_goals_markdown,t.goals_markdown),
 			         'description_markdown',COALESCE(first_revision.previous_description_markdown,t.description_markdown),
-			         'responsible_user_id',COALESCE(first_revision.previous_responsible_user_id,t.responsible_user_id),
+			         'responsible_user_id',(COALESCE(first_revision.previous_responsible_user_ids,current_responsibilities.user_ids))[1],
+			         'responsible_user_ids',COALESCE(first_revision.previous_responsible_user_ids,current_responsibilities.user_ids),
 			         'target_date',COALESCE(first_revision.previous_target_date,t.target_date)) AS metadata
 			FROM public.tasks t
 			LEFT JOIN LATERAL (
-				SELECT r.previous_name,r.previous_goals_markdown,r.previous_description_markdown,r.previous_responsible_user_id,r.previous_target_date
+				SELECT r.previous_name,r.previous_goals_markdown,r.previous_description_markdown,r.previous_responsible_user_ids,r.previous_target_date
 				FROM public.task_revisions r WHERE r.task_id=t.id ORDER BY r.from_version LIMIT 1
 			) first_revision ON true
+			LEFT JOIN LATERAL (
+				SELECT ARRAY(SELECT tr.user_id FROM public.task_responsibilities tr WHERE tr.task_id=t.id ORDER BY tr.user_id) AS user_ids
+			) current_responsibilities ON true
 			WHERE t.id=$1::uuid
 
 			UNION ALL
 			SELECT 'task_revision:'||r.id::text,'task.updated','task',r.task_id,r.edited_by,r.edited_at,
 			       jsonb_build_object('from_version',r.from_version,'to_version',r.to_version,'change_reason',r.change_reason,
-			         'before',jsonb_build_object('name',r.previous_name,'goals_markdown',r.previous_goals_markdown,'description_markdown',r.previous_description_markdown,'responsible_user_id',r.previous_responsible_user_id,'target_date',r.previous_target_date),
-			         'after',jsonb_build_object('name',r.new_name,'goals_markdown',r.new_goals_markdown,'description_markdown',r.new_description_markdown,'responsible_user_id',r.new_responsible_user_id,'target_date',r.new_target_date))
+			         'before',jsonb_build_object('name',r.previous_name,'goals_markdown',r.previous_goals_markdown,'description_markdown',r.previous_description_markdown,'responsible_user_id',r.previous_responsible_user_ids[1],'responsible_user_ids',r.previous_responsible_user_ids,'target_date',r.previous_target_date),
+			         'after',jsonb_build_object('name',r.new_name,'goals_markdown',r.new_goals_markdown,'description_markdown',r.new_description_markdown,'responsible_user_id',r.new_responsible_user_ids[1],'responsible_user_ids',r.new_responsible_user_ids,'target_date',r.new_target_date))
 			FROM public.task_revisions r WHERE r.task_id=$1::uuid
 
 			UNION ALL

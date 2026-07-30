@@ -43,9 +43,9 @@ The system must always retain at least one enabled Admin.
 
 ## Tasks
 
-`tasks` belongs to one project and owns name, Markdown goals and description, immutable creator, optional responsible Member, optional calendar target date, optimistic version, and timestamps. It has no deletion or status/Kanban workflow in v1. Responsible assignment is mutable and never defines access or edit ownership. Removing project membership clears that user's current task responsibilities and increments those task versions in the same transaction.
+`tasks` belongs to one project and owns name, Markdown goals and description, immutable creator, optional calendar target date, optimistic version, and timestamps. `task_responsibilities` is the authoritative zero-or-more assignment set. It has no deletion or status/Kanban workflow in v1. Responsibility is mutable and never defines access or edit ownership. Removing project membership removes only that user from each affected set and increments each affected task once in the same transaction.
 
-Task writes preserve Markdown source only. Sanitized HTML is derived at read/write response time and never stored as competing truth. `task_revisions` atomically appends every before/after mutable field set, editor, timestamp, and version transition. This supports complete authorized timeline reconstruction without placing unrestricted content in the security audit stream.
+Task writes preserve Markdown source only. Sanitized HTML is derived at read/write response time and never stored as competing truth. `task_revisions` atomically appends every before/after mutable field set, including complete responsible-user ID arrays, editor, timestamp, and version transition. This supports complete authorized timeline reconstruction without placing unrestricted content in the security audit stream.
 
 ## Progress updates and revisions
 

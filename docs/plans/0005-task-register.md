@@ -2,6 +2,8 @@
 
 Status: Implemented; automated verification passes, database-live lifecycle verification pending
 
+The original singular responsibility transport remains available as V1 compatibility. Plan 0010 supersedes only the assignment cardinality for new V2 task integrations; creator ownership, Markdown, dates, authorization, and concurrency decisions in this plan remain active.
+
 ## Objective
 
 Deliver the complete backend task register as one larger vertical slice: project-scoped create/list/detail/update, immutable creator ownership, optional responsible Member and target date, sanitized Markdown projections, optimistic concurrency, transactional audit, JSON/OpenAPI contracts, and verification assets.

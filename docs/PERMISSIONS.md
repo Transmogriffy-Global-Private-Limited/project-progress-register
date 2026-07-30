@@ -44,7 +44,7 @@ Authorization is enforced in backend application services and project-scoped per
 - Inactive projects remain readable to authorized users for history but are not deleted or silently hidden.
 - Admins or current project Members may create tasks only in active projects; creator identity is the authenticated actor and cannot change.
 - Admins may edit any task. Members may edit only their own task while they retain current project membership.
-- Responsible assignment requires a current enabled project Member but grants neither project access nor edit ownership. Membership removal atomically clears that user's task responsibilities.
+- Every responsible assignment requires a current enabled project Member but grants neither project access nor edit ownership. V2 replaces the complete assignment set atomically; membership removal removes that user while retaining other assignees.
 - Admins and current project Members may add progress to active-project tasks. Members edit only updates they authored; Admins edit any. Every edit appends an immutable revision.
 - Current project access permits reading all task progress, revisions, attachment metadata, and available bytes. Authorship controls mutation, not read visibility.
 - Every file requires reported upload coordinates. Geofence failure never grants verification and never denies accepted bytes; only a camera-source image with a server-verified location is labelled verified.

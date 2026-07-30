@@ -24,9 +24,9 @@ A Member can view a project only while they are a current project member. Posses
 
 ## Tasks
 
-Project members create tasks. Members edit only tasks they created; Admins edit any task. Creator identity is immutable and distinct from an optional responsible member.
+Project members create tasks. Members edit only tasks they created; Admins edit any task. Creator identity is immutable and distinct from the editable set of responsible Members.
 
-A task contains a name, goals, description, optional responsible member, optional target date, chronological progress updates, accepted suggestions, current Admin Assessment, and assessment history. Goals and descriptions are stored as Markdown and rendered as sanitized HTML through a simple formatting toolbar.
+A task contains a name, goals, description, zero or more responsible Members, optional target date, chronological progress updates, accepted suggestions, current Admin Assessment, and assessment history. Goals and descriptions are stored as Markdown and rendered as sanitized HTML through a simple formatting toolbar.
 
 ## Progress updates
 

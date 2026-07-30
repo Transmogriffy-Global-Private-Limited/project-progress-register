@@ -37,6 +37,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `plans/0007-production-hosting.md` — `/backend` base path, production database reset, systemd/Caddy hosting, and public verification.
 - `plans/0008-review-comments-suggestions-assessments.md` — implemented immutable comments, accepted suggestions, and Admin assessment workflow awaiting deferred verification.
 - `plans/0009-reporting-audit-and-recovery.md` — implemented/deployed dashboard, task timeline, complete Admin audit, and guarded backup/restore plan; restore drill pending.
+- `plans/0010-multiple-task-responsibilities.md` — in-progress plural task assignment migration, contract, history, and membership-removal plan.
 - `PROJECT_STATE.md` — implemented and verified reality.
 - `AI_CHANGELOG.md` — chronological agent-assisted change record.
 

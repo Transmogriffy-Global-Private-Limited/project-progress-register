@@ -223,7 +223,9 @@ func writeProjectError(w http.ResponseWriter, err error) {
 	case errors.Is(err, projects.ErrInvalidMember):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_member", "The target must be an enabled Member account.")
 	case errors.Is(err, projects.ErrInvalidResponsible):
-		writeError(w, http.StatusUnprocessableEntity, "invalid_responsible_member", "The responsible user must be a current enabled project Member.")
+		writeError(w, http.StatusUnprocessableEntity, "invalid_responsible_member", "Every responsible user must be a current enabled project Member.")
+	case errors.Is(err, projects.ErrTaskV2Required):
+		writeError(w, http.StatusConflict, "task_v2_required", "This task has multiple responsible Members and must be edited through the V2 task API.")
 	case errors.Is(err, projects.ErrInactiveProject):
 		writeError(w, http.StatusConflict, "project_inactive", "Resources cannot be changed in an inactive project.")
 	default:

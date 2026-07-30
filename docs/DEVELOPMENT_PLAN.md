@@ -101,6 +101,20 @@ Scope: one larger backend vertical slice covering task lifecycle, project scope,
 
 Detailed plan: `plans/0005-task-register.md`.
 
+### Feature: Multiple editable task responsibilities
+
+Status: Verified locally; not deployed
+
+Phase: 5
+
+Depends on: tasks, project membership, and immutable task revisions.
+
+Objective: Let authorized task editors atomically assign zero or more current project Members without changing task ownership or access policy.
+
+Scope: Migrate existing singular assignments into an authoritative join table; add plural V2 task contracts while retaining safe singular V1 compatibility; preserve optimistic versions, complete before/after timeline reconstruction, membership-removal cleanup, audit, tests, guarded scripts, OpenAPI, and frontend documentation.
+
+Detailed plan: `plans/0010-multiple-task-responsibilities.md`.
+
 ### Feature: Verified progress updates and attachments
 
 Status: Implemented
@@ -181,21 +195,21 @@ Canonical guide: `integrations/FRONTEND_INTEGRATION.md`.
 
 ## Current execution
 
-Current phase: Backend completion verification
+Current phase: Operational verification
 
-Active feature: Deferred backend verification and completion reconciliation
+Active feature: Database lifecycle and restore verification
 
-Current implementation slice: Run database-live migrations/lifecycle verification and an empty-target restore drill on explicitly disposable targets
+Current implementation slice: None
 
-Last completed slice: Reconciled deployed-state documentation, added the exhaustive verified frontend integration handoff for all 39 operations, and deployed its corrected embedded OpenAPI contract
+Last completed slice: Implemented and locally verified multiple editable task responsibilities through additive V2 task endpoints while retaining V1 compatibility
 
-Next expected slice: Database-live lifecycle verification and the coordinated restore drill on explicitly disposable targets
+Next expected slice: Return to database-live lifecycle verification and the coordinated restore drill on explicitly disposable local targets
 
 Blocked by: None
 
 ## Next approved work
 
-1. Run migrations/lifecycle verification and the restore drill only on explicitly disposable database/filesystem targets.
+1. Run the remaining lifecycle verification and coordinated restore drill only on explicitly disposable database/filesystem targets.
 
 ## Risks and unresolved decisions
 
