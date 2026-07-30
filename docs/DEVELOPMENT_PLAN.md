@@ -103,7 +103,7 @@ Detailed plan: `plans/0005-task-register.md`.
 
 ### Feature: Multiple editable task responsibilities
 
-Status: Verified locally; not deployed
+Status: Verified
 
 Phase: 5
 
@@ -232,7 +232,7 @@ For production hosting, prefix-focused tests, Linux formatting/tidiness/vet/test
 
 The hosted-contract correction has passing focused coverage for prefixed attachment `content_path` values and deployment-resolved OpenAPI server defaults. The full verifier and all three loopback smoke states pass, including root docs enabled/disabled and `/backend` docs enabled with unprefixed isolation. Production serves the corrected current binary; public TLS readiness and the raw schema's resolved `/backend` default are verified.
 
-The reporting/recovery review follow-up is also deployed. Production remains at seven applied migrations, public IPv4/IPv6 readiness passes, and the hosted OpenAPI timeline operation exposes the verified bounded `limit`, opaque `cursor`, and optional `next_cursor` contract.
+The reporting/recovery review follow-up and plural task-responsibility slice are deployed. Production has eight applied and zero pending migrations, public IPv4/IPv6 readiness passes, and the hosted OpenAPI exposes the V2 task contract plus the bounded timeline `limit`, opaque `cursor`, and optional `next_cursor` contract.
 
 The complete frontend handoff consolidates every browser-visible contract and workflow into `integrations/FRONTEND_INTEGRATION.md`. Its verifier checks that every OpenAPI operation ID and path remains represented and runs inside `scripts/verify-all.ps1`.
 

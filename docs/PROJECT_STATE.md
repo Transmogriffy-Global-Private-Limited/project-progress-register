@@ -1,5 +1,11 @@
 # Project state
 
+## 2026-07-30 — Multiple task responsibilities deployed
+
+- Created and verified a coordinated pre-migration database/filesystem backup, applied migration `000008`, and rehosted clean `main` behind the existing `/backend` boundary.
+- Production reports eight applied and zero pending migrations. The existing singular assignment was copied into `task_responsibilities`; the obsolete task column is absent and plural revision history storage is present.
+- Loopback plus public IPv4/IPv6 readiness, public Swagger, and the hosted V2 OpenAPI contract pass. Caddy and the production environment required no changes.
+
 ## 2026-07-30 — Systemd-native maintenance environment parsing
 
 - Backup and restore now let systemd parse the protected service environment file instead of sourcing it as Bash, so valid unquoted systemd values containing spaces no longer prevent maintenance.
@@ -32,7 +38,7 @@ As of 2026-07-30
 - Optional canonical `BASE_PATH` mounting across application routes, redirects, compatibility pages, assets, cookies, attachment response links, deployment-resolved OpenAPI server selection, and Swagger addressing.
 - Production `ppr.service` running as the unprivileged `ppr` user on `127.0.0.1:18090` with private attachment storage under `/var/lib/ppr/attachments`.
 - Validated and reloaded Caddy routing for `ppr.transev.site/backend/*`; the hostname root and unprefixed application routes are rejected.
-- Reset PostgreSQL 18.4 `pprdb` with zero initial business rows and a generated least-privileged runtime login, then advanced it through all seven current migrations with validated pre-reset and pre-migration dumps.
+- Reset PostgreSQL 18.4 `pprdb` with zero initial business rows and a generated least-privileged runtime login, then advanced it through all eight current migrations with validated pre-reset and pre-migration dumps.
 - Thin `rehost-ppr` interactive hook backed by a tracked installed handler that tests and statically builds the selected PPR checkout, atomically installs the binary with one-version backup, uses the shared guarded service cycle, waits for database readiness, and rolls back failed deployments.
 
 ## Verification state
@@ -54,13 +60,13 @@ Cloudflare's authoritative A and AAAA records match this VPS. Caddy obtained a L
 - Environment-specific off-host backup scheduling/retention and a recorded disposable restore drill.
 - The optional future “needs progress update” classification; factual dashboard fields are implemented without inventing that policy.
 
-## Multiple task responsibilities verified locally; not deployed
+## Multiple task responsibilities deployed
 
 Migration `000008` adds the authoritative `task_responsibilities` set, losslessly converts existing singular current and revision values, and removes the obsolete singular storage columns. Additive `/api/v2/projects/{project_id}/tasks...` list/create/detail/update operations expose deterministic `responsible_members` arrays and atomically replace the complete assignment set. Existing V1 routes keep their singular request/response contract; V1 reads select one deterministic compatibility member and V1 update returns `409 task_v2_required` rather than silently flattening a multi-assigned task. Responsibility still grants neither access nor edit ownership.
 
 On an explicitly disposable loopback-only PostgreSQL 17 target, migration `000008` preserved seeded current and historical responsibility values. The guarded task workflow then passed two-member V2 create, authorized read, non-owner denial, V1 compatibility read, V1 unsafe-flatten rejection, V2 assignment replacement, stale-version conflict, membership-removal cleanup/versioning, plural and singular-compatible timeline reconstruction, and inactive-project enforcement. Focused tests, OpenAPI validation, frontend drift verification, the full verifier, all-package race detection, and all three root/prefixed API-documentation smoke states pass.
 
-This slice has not been committed, pushed, published, migrated, or deployed. Production remains on migration `000007` and its existing deployed backend until separately authorized publication and deployment.
+Production was backed up, migrated through `000008`, and rehosted from clean `main`. The existing assignment migrated into the join table, the hosted V2 contract is present, and loopback plus public IPv4/IPv6 readiness pass. Data-creating lifecycle verification remains confined to disposable targets.
 
 ## Implemented; database-live verification pending
 
@@ -94,4 +100,4 @@ After backend feature completion, focused identity/projects/progress/HTTP/migrat
 
 ## Next slice
 
-Use only explicitly disposable targets for lifecycle verification and the coordinated restore drill. Production is current at seven applied migrations and the `b6bc2ac` source state.
+Use only explicitly disposable targets for lifecycle verification and the coordinated restore drill. Production is current at eight applied migrations and the `559ce11` source state.

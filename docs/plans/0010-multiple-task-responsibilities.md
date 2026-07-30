@@ -1,6 +1,6 @@
 # Plan 0010 — Multiple editable task responsibilities
 
-Status: Verified locally; not deployed
+Status: Verified and deployed
 
 ## Objective
 
@@ -50,4 +50,6 @@ Allow each task to have zero or more responsible project Members while preservin
 
 ## Result
 
-Implemented migration `000008`, the shared plural task domain/persistence flow, additive V2 task routes, safe V1 compatibility, complete assignment revision/timeline metadata, membership-removal cleanup, OpenAPI, frontend contracts, and verification assets. A loopback-only disposable PostgreSQL 17 target proved lossless migration of existing task/revision responsibility values and the complete guarded V2/V1 workflow. Focused tests, OpenAPI and frontend drift validation, the full verifier, all-package race detection, and all three root/prefixed API-documentation smoke states pass. Production was not accessed or changed and remains on migration `000007` until a separately authorized publication/deployment.
+Implemented migration `000008`, the shared plural task domain/persistence flow, additive V2 task routes, safe V1 compatibility, complete assignment revision/timeline metadata, membership-removal cleanup, OpenAPI, frontend contracts, and verification assets. A loopback-only disposable PostgreSQL 17 target proved lossless migration of existing task/revision responsibility values and the complete guarded V2/V1 workflow. Focused tests, OpenAPI and frontend drift validation, the full verifier, all-package race detection, and all three root/prefixed API-documentation smoke states pass.
+
+Production was backed up as one database/filesystem recovery point, advanced to eight applied and zero pending migrations, and rehosted from clean `main`. The migration copied the existing singular assignment into `task_responsibilities`; schema inspection confirms the obsolete task column is absent and the plural revision column is present. Loopback and public IPv4/IPv6 readiness, Swagger, and the hosted V2 OpenAPI contract pass. The guarded data-creating workflow remains restricted to disposable targets.

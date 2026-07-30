@@ -1,5 +1,14 @@
 # AI changelog
 
+## 2026-07-30 — Multiple task responsibilities migrated and deployed
+
+Status: Production migration and rehost verified
+
+- Re-ran formatting, tidiness, vet, tests, OpenAPI validation, frontend handoff drift coverage, all-package race detection, static build, Bash parsing, and docs-enabled/docs-disabled/prefixed loopback smoke states; PowerShell itself is unavailable on this VPS.
+- Created and validated a coordinated mode-private database/filesystem backup, stopped the schema-7 service, applied migration `000008`, and rehosted clean `main` through the guarded handler.
+- Verified eight applied and zero pending migrations, lossless migration of the existing responsibility, removal of the old task column, presence of plural revision storage, clean binary provenance, loopback plus public IPv4/IPv6 readiness, public Swagger, and the hosted V2 OpenAPI contract.
+- Caddy and environment configuration required no changes. Because the schema advanced, rollback coordinates the pre-migration backup with a compatible binary rather than using the previous binary alone.
+
 ## 2026-07-30 — Repair production backup and restore environment loading
 
 - Replaced Bash `source` of systemd environment files in the coordinated backup and guarded restore tools with transient systemd execution using `EnvironmentFile=`.

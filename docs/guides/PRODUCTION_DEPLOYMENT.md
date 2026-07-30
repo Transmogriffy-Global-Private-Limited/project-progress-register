@@ -60,7 +60,7 @@ systemd-run --quiet --wait --pipe --collect --uid=ppr --gid=ppr \
   /opt/ppr/bin/ppr migrate up
 ```
 
-The transient service reads the protected environment file without expanding its secrets into shell arguments. A successful current schema reports seven applied and zero pending migrations.
+The transient service reads the protected environment file without expanding its secrets into shell arguments. A successful current schema reports eight applied and zero pending migrations.
 
 ## Activation and verification
 

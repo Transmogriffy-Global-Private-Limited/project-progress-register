@@ -1,6 +1,6 @@
 # Domain model
 
-Status: Implemented and deployed through migration `000007`; guarded data-creating lifecycle verification remains pending on an explicitly disposable target.
+Status: Implemented and deployed through migration `000008`; guarded data-creating lifecycle verification remains pending on an explicitly disposable target.
 
 ## Aggregate relationships
 
