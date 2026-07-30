@@ -6,9 +6,30 @@ $ErrorActionPreference = 'Stop'
 $schemaPath = '.\api\openapi\v1\openapi.yaml'
 $guidePath = '.\docs\integrations\FRONTEND_INTEGRATION.md'
 $taskResponsibilitiesGuidePath = '.\docs\integrations\FRONTEND_TASK_RESPONSIBILITIES_V2.md'
+$cameraVideoGuidePath = '.\docs\integrations\FRONTEND_DIRECT_CAMERA_VIDEO.md'
 $schema = Get-Content $schemaPath -Raw
 $guide = Get-Content $guidePath -Raw
 $taskResponsibilitiesGuide = Get-Content $taskResponsibilitiesGuidePath -Raw
+$cameraVideoGuide = Get-Content $cameraVideoGuidePath -Raw
+
+$requiredCameraVideoGuidance = @(
+    'createTaskProgressUpdate',
+    'downloadProgressAttachment',
+    'accept="video/*"',
+    'source: "camera"',
+    'form.append("metadata", JSON.stringify(metadata))',
+    'attachment.content_path',
+    'Accept-Ranges: bytes',
+    '206 Partial Content',
+    'migration `000009`'
+)
+$missingCameraVideoGuidance = @(
+    $requiredCameraVideoGuidance |
+        Where-Object { -not $cameraVideoGuide.Contains($_) }
+)
+if ($missingCameraVideoGuidance.Count -gt 0) {
+    throw "Direct camera video frontend guide is missing required guidance: $($missingCameraVideoGuidance -join ', ')"
+}
 
 $requiredTaskResponsibilitiesGuidance = @(
     '/api/v2/projects/{project_id}/tasks',
@@ -65,6 +86,9 @@ $requiredGuidance = @(
     'invalid_responsible_member',
     'task_v2_required',
     'responsible_user_ids',
+    'accept="video/*"',
+    'Accept-Ranges: bytes',
+    'direct camera photo or video',
     'attachment_pending',
     'project_inactive',
     'content_path'

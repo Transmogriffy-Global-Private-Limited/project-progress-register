@@ -11,7 +11,7 @@ The backend records two related but different facts:
 
 Every file needs coordinates. Coordinates may be inside, outside, inaccurate, or evaluated without a configured geofence; all those files are accepted and retain the geotag. Text-only progress may omit location or report why the browser could not supply it.
 
-Only an image whose `source` is `camera` may be verified. The `camera` value is still a browser-reported Chrome workflow assertion, not hardware attestation. The image becomes verified only when the server also returns upload-location status `verified`.
+Only an image or video whose `source` is `camera` may be verified. The `camera` value is still a browser-reported Chrome workflow assertion, not hardware attestation. The media becomes verified only when the server also returns upload-location status `verified`.
 
 | File | Source | Location result | Attachment result |
 |---|---|---|---|
@@ -19,6 +19,8 @@ Only an image whose `source` is `camera` may be verified. The `camera` value is 
 | Image | `camera` | outside/inaccurate/no geofence | `non_verified` |
 | Image | `upload` | any | `non_verified` |
 | Document | `upload` | any | `non_verified` |
+| Video | `camera` | `verified` | `verified` |
+| Video | `camera` | outside/inaccurate/no geofence | `non_verified` |
 | Video | `upload` | any | `non_verified` |
 
 The frontend must display the backend's exact `verification_status` and `verification_reason`. It must not infer verification from the presence of coordinates.
@@ -44,3 +46,5 @@ The client must send a stable `Idempotency-Key` for retries. Reusing a key with 
 If metadata commits but a file cannot finish its atomic rename, the API returns `503 attachment_pending`. Retry with the same idempotency key. The runtime also reconciles pending attachments immediately and every minute. Pending bytes are never served as available.
 
 Current progress edits change written Markdown only. Evidence and attachments stay immutable; every edit appends a before/after revision.
+
+Authorized video content uses the existing nested `content_path`. The response uses detected video MIME, inline disposition, and HTTP byte ranges so a browser `<video>` element can seek without loading the entire file. Images and documents retain attachment disposition.

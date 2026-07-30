@@ -14,6 +14,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `guides/TASK_TIMELINE.md` — authorized audit-style task chronology, metadata, reconstruction, and trust boundary.
 - `integrations/FRONTEND_INTEGRATION.md` — self-contained “read this and build the FE” guide covering every browser workflow, endpoint, payload, response, permission, error, retry, and rendering rule.
 - `integrations/FRONTEND_TASK_RESPONSIBILITIES_V2.md` — focused frontend migration guide for plural, editable task assignments through the additive V2 task API.
+- `integrations/FRONTEND_DIRECT_CAMERA_VIDEO.md` — focused frontend guide for direct camera photo/video evidence upload, verification rendering, and authorized range streaming.
 
 ## Architecture and operations
 
@@ -39,6 +40,7 @@ This index is the entry point to the authoritative Project Progress Register doc
 - `plans/0008-review-comments-suggestions-assessments.md` — implemented immutable comments, accepted suggestions, and Admin assessment workflow awaiting deferred verification.
 - `plans/0009-reporting-audit-and-recovery.md` — implemented/deployed dashboard, task timeline, complete Admin audit, and guarded backup/restore plan; restore drill pending.
 - `plans/0010-multiple-task-responsibilities.md` — verified and deployed plural task assignment migration, contract, history, and membership-removal plan.
+- `plans/0011-direct-camera-video.md` — direct browser-camera video evidence classification and authorized byte-range streaming plan.
 - `PROJECT_STATE.md` — implemented and verified reality.
 - `AI_CHANGELOG.md` — chronological agent-assisted change record.
 

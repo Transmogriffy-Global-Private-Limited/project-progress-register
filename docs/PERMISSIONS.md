@@ -47,7 +47,7 @@ Authorization is enforced in backend application services and project-scoped per
 - Every responsible assignment requires a current enabled project Member but grants neither project access nor edit ownership. V2 replaces the complete assignment set atomically; membership removal removes that user while retaining other assignees.
 - Admins and current project Members may add progress to active-project tasks. Members edit only updates they authored; Admins edit any. Every edit appends an immutable revision.
 - Current project access permits reading all task progress, revisions, attachment metadata, and available bytes. Authorship controls mutation, not read visibility.
-- Every file requires reported upload coordinates. Geofence failure never grants verification and never denies accepted bytes; only a camera-source image with a server-verified location is labelled verified.
+- Every file requires reported upload coordinates. Geofence failure never grants verification and never denies accepted bytes; only a direct camera-source image or video with a server-verified location is labelled verified.
 - Attachment identifiers are resolved through project, task, and progress scope. Original names and opaque storage keys never grant access.
 - Comments are immutable and readable within current project scope. Admins and current Members may add them only to active projects.
 - Suggestion acceptance is a separate immutable Admin action. Repeating it returns the one existing acceptance and does not duplicate state or audit.

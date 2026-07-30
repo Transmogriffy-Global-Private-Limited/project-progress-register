@@ -37,16 +37,16 @@ func evaluateEvidence(location *ReportedLocation, unavailable *string, geofence 
 }
 
 func attachmentVerification(mediaKind, source, locationStatus string) (string, string) {
-	if mediaKind != "image" {
-		return "non_verified", "Only Chrome camera photographs are eligible for verified status."
+	if mediaKind != "image" && mediaKind != "video" {
+		return "non_verified", "Only direct Chrome camera photos and videos are eligible for verified status."
 	}
 	if source != "camera" {
-		return "non_verified", "Existing-file images are not verified camera captures."
+		return "non_verified", "Existing-file media is not a verified direct camera capture."
 	}
 	if locationStatus != "verified" {
-		return "non_verified", "The camera photograph's upload location was not verified: " + locationStatus + "."
+		return "non_verified", "The direct camera media upload location was not verified: " + locationStatus + "."
 	}
-	return "verified", "Chrome camera source reported and upload location verified by the server."
+	return "verified", "Direct Chrome camera source reported and upload location verified by the server."
 }
 
 func haversineMetres(latitudeA, longitudeA, latitudeB, longitudeB float64) float64 {

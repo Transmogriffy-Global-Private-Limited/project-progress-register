@@ -32,13 +32,13 @@ A task contains a name, goals, description, zero or more responsible Members, op
 
 “Add Progress Update” is the central action. A project member may add an update to any task in a project they can currently access. Members edit only their own updates; Admins may review all updates. Every edit preserves an immutable revision with editor, edit time, previous content, and new content.
 
-A text-only update may be submitted without location. Every attached image, document, or video requires a current browser upload location, but an inaccurate or outside-geofence result does not reject the file. Only an image captured through the in-browser camera flow can be labelled verified, and only when its location passes server-side accuracy and geofence evaluation. Existing-file images, documents, and videos are always labelled non-verified while retaining their upload geotag. The server receipt time is authoritative.
+A text-only update may be submitted without location. Every attached image, document, or video requires a current browser upload location, but an inaccurate or outside-geofence result does not reject the file. An image or video captured through the in-browser camera flow can be labelled verified only when its location passes server-side accuracy and geofence evaluation. Existing-file images, documents, and videos are always labelled non-verified while retaining their upload geotag. The server receipt time is authoritative.
 
 The task page presents updates chronologically like entries in a paper work diary.
 
 ## Attachments and evidence
 
-Camera captures and existing-file uploads are separate browser-reported attachment sources. Existing uploads are always non-verified even though their upload location is required and stored. Extracted embedded metadata, when supported, is stored separately and labelled untrusted.
+Direct camera photo/video captures and existing-file uploads are separate browser-reported attachment sources. Existing uploads are always non-verified even though their upload location is required and stored. Extracted embedded metadata, when supported, is stored separately and labelled untrusted.
 
 For every attachment the system records original name, opaque storage identifier, server-detected MIME type, byte size, SHA-256, uploader, server upload time, source, extracted metadata, and trust classification. Files are never placed in an executable or publicly browsable directory.
 

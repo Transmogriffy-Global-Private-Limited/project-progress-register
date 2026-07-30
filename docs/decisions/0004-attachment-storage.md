@@ -12,7 +12,7 @@ V1 runs on one small VPS and needs camera images plus uploaded images, documents
 
 Store attachment bytes under a configurable private local filesystem root and metadata in PostgreSQL. Application services depend on a narrow storage boundary introduced with the upload slice. Use opaque storage identifiers, staging, streamed size/MIME/hash validation, atomic same-volume rename, explicit metadata state, and restart reconciliation.
 
-All downloads pass backend project authorization and are streamed through the application with attachment disposition. No upload path is executable, publicly browsable, or derived directly from the original filename.
+All content reads pass backend project authorization and are streamed through the application. Videos use inline disposition and byte-range responses for authorized playback; other media uses attachment disposition. No upload path is executable, publicly browsable, or derived directly from the original filename.
 
 ## Consequences
 

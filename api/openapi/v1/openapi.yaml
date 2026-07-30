@@ -569,8 +569,9 @@ paths:
       summary: Create progress and optionally attach geotagged files
       description: >-
         Requires an active authorized project and an Idempotency-Key. The metadata JSON and files are ordered: one attachment descriptor per repeated files part.
-        Every file requires reported coordinates. Geofence failure never rejects bytes. Only a camera-source image whose location passes server evaluation becomes verified;
-        uploaded images, documents, and videos remain non-verified while retaining the upload geotag.
+        Every file requires reported coordinates. Geofence failure never rejects bytes. Direct browser-camera images and videos may use source=camera.
+        Camera-source images and videos whose location passes server evaluation become verified; otherwise they remain non-verified. Uploaded existing media
+        remains non-verified while retaining the upload geotag.
       security: [{cookieSession: []}]
       parameters:
         - {$ref: '#/components/parameters/ProjectID'}
@@ -649,8 +650,8 @@ paths:
     get:
       tags: [Progress]
       operationId: downloadProgressAttachment
-      summary: Download one available attachment through current project authorization
-      description: Streams immutable bytes with attachment disposition, the server-detected MIME, private no-store caching, and nosniff. Storage paths are never exposed.
+      summary: Stream or download one available attachment through current project authorization
+      description: Streams immutable bytes with byte-range support, the server-detected MIME, private no-store caching, and nosniff. Videos use inline disposition for playback; other media uses attachment disposition. Storage paths are never exposed.
       security: [{cookieSession: []}]
       parameters:
         - {$ref: '#/components/parameters/ProjectID'}
@@ -661,7 +662,16 @@ paths:
         '200':
           description: Authorized attachment bytes.
           headers:
-            Content-Disposition: {schema: {type: string}, description: Safe attachment filename disposition.}
+            Accept-Ranges: {schema: {type: string, const: bytes}, description: Byte-range support for authorized media streaming.}
+            Content-Disposition: {schema: {type: string}, description: Safe inline filename disposition for videos; attachment disposition for other media.}
+            X-Content-Type-Options: {schema: {type: string, const: nosniff}}
+          content: {application/octet-stream: {schema: {type: string, format: binary}}}
+        '206':
+          description: Authorized partial video bytes for a valid Range request.
+          headers:
+            Accept-Ranges: {schema: {type: string, const: bytes}}
+            Content-Disposition: {schema: {type: string}, description: Safe inline video filename disposition.}
+            Content-Range: {schema: {type: string}, description: Served byte interval and complete file size.}
             X-Content-Type-Options: {schema: {type: string, const: nosniff}}
           content: {application/octet-stream: {schema: {type: string, format: binary}}}
         '401': {$ref: '#/components/responses/Unauthenticated'}
@@ -1277,7 +1287,7 @@ components:
       additionalProperties: false
       required: [source]
       properties:
-        source: {type: string, enum: [camera, upload], description: Browser-reported flow. Camera is allowed only for images and is not hardware attestation.}
+        source: {type: string, enum: [camera, upload], description: Browser-reported flow. Camera is allowed for direct image or video capture and is not hardware attestation; either becomes verified only when the server verifies its upload location.}
         browser_last_modified_at:
           oneOf: [{type: string, format: date-time}, {type: 'null'}]
     CreateProgressMetadata:

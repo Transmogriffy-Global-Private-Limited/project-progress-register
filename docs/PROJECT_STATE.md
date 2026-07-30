@@ -1,5 +1,13 @@
 # Project state
 
+## 2026-07-30 — Direct camera video evidence and streaming verified locally
+
+- Local migration `000009` expands database camera/verified constraints from images to images or videos while documents remain excluded.
+- The progress service accepts direct camera video and applies the same server-computed location verification rule as camera photos; uploaded/gallery video remains non-verified.
+- The existing authorized attachment content route serves video inline with HTTP byte ranges while retaining attachment disposition for other media.
+- Focused progress/HTTP/migration tests, OpenAPI validation, FE drift verification, the full verifier, and all-package race detection pass. The guarded database-live workflow was extended but not executed because no disposable zero-user target was authorized.
+- This source slice is published on `anubhab-work` and `main` by explicit operator authorization, but migration `000009` is not applied and the new binary is not deployed. Production remains on its previously verified schema and binary.
+
 ## 2026-07-30 — Multiple task responsibilities deployed
 
 - Created and verified a coordinated pre-migration database/filesystem backup, applied migration `000008`, and rehosted clean `main` behind the existing `/backend` boundary.
@@ -84,7 +92,7 @@ Migrations `000002` through `000004` are applied to the clean production databas
 
 The repository contains migration `000005`, chronological progress list/create/detail/update, immutable before/after revisions, shared upload-location/geofence snapshots, per-file verified/non-verified classification, image/document/video allowlists, SHA-256, private staging/final storage, pending reconciliation, authorized downloads, idempotent multipart creation, OpenAPI, tests, documentation, and `verify-live-progress.ps1`.
 
-Every file requires browser-reported coordinates. Only a camera-source image whose coordinates pass current accuracy/geofence policy is verified; existing images, documents, and videos remain non-verified but keep their geotag. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes pass. Migration `000005` is applied; `verify-live-progress.ps1` remains unexecuted because it requires a disposable, fully migrated zero-user database and would populate production.
+Every file requires browser-reported coordinates. The deployed migration-`000005` behavior verifies only qualifying camera-source images; existing images, documents, and videos remain non-verified but keep their geotag. Local migration `000009` and its consuming code expand that rule to qualifying direct camera images or videos without changing uploaded/gallery media. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes passed for the original slice. The extended guarded verifier still requires a disposable, fully migrated zero-user database and would populate its target.
 
 ## Review workflow deployed; database-live verification pending
 

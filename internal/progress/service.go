@@ -159,9 +159,9 @@ func (s *Service) Create(ctx context.Context, actor identity.User, projectID, ta
 			_ = s.storage.DiscardStaged(file.StorageKey)
 			return Update{}, fmt.Errorf("close attachment input: %w", closeErr)
 		}
-		if descriptor.Source == "camera" && file.MediaKind != "image" {
+		if descriptor.Source == "camera" && file.MediaKind != "image" && file.MediaKind != "video" {
 			_ = s.storage.DiscardStaged(file.StorageKey)
-			return Update{}, &ValidationError{Field: fmt.Sprintf("attachments[%d].source", index), Message: "camera source is allowed only for images"}
+			return Update{}, &ValidationError{Field: fmt.Sprintf("attachments[%d].source", index), Message: "camera source is allowed only for images or videos"}
 		}
 		staged = append(staged, file)
 		persisted = append(persisted, attachmentPersistence{Attachment: Attachment{OriginalName: file.OriginalName, ReportedMIME: file.ReportedMIME, DetectedMIME: file.DetectedMIME, MediaKind: file.MediaKind, Source: descriptor.Source, SizeBytes: file.SizeBytes, SHA256: file.SHA256, BrowserLastModifiedAt: descriptor.BrowserLastModifiedAt, EmbeddedMetadata: map[string]any{}, StorageState: "pending"}, StorageKey: file.StorageKey})

@@ -1,9 +1,31 @@
 package migrations
 
 import (
+	"strings"
 	"testing"
 	"testing/fstest"
 )
+
+func TestEmbeddedCameraVideoMigrationRetainsSourceAndVerificationConstraints(t *testing.T) {
+	migrations, err := Load(embeddedFiles, "sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	latest := migrations[len(migrations)-1]
+	if latest.Version != 9 || latest.Name != "camera_video_capture" {
+		t.Fatalf("latest migration=%#v", latest)
+	}
+	for _, expected := range []string{
+		"media_kind IN ('image', 'video')",
+		"source <> 'camera'",
+		"verification_status <> 'verified'",
+		"source = 'camera'",
+	} {
+		if !strings.Contains(latest.SQL, expected) {
+			t.Fatalf("migration 000009 missing %q", expected)
+		}
+	}
+}
 
 func TestLoadOrdersAndChecksumsMigrations(t *testing.T) {
 	t.Parallel()

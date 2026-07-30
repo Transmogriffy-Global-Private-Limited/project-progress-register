@@ -40,8 +40,10 @@ if ($LASTEXITCODE -ne 0 -or [int]$userCount -ne 0) { throw "progress verificatio
 $runID = New-RandomToken 6
 $storageRoot = Join-Path (Get-Location) ".local\progress-live-$runID"
 $photoPath = Join-Path (Get-Location) ".local\progress-photo-$runID.jpg"
+$videoPath = Join-Path (Get-Location) ".local\progress-video-$runID.mp4"
 $documentPath = Join-Path (Get-Location) ".local\progress-document-$runID.pdf"
 [IO.File]::WriteAllBytes($photoPath, [byte[]](0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0xFF, 0xD9))
+[IO.File]::WriteAllBytes($videoPath, [byte[]](0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6D, 0x70, 0x34, 0x32, 0x00, 0x00, 0x00, 0x00, 0x6D, 0x70, 0x34, 0x32, 0x69, 0x73, 0x6F, 0x6D))
 [IO.File]::WriteAllText($documentPath, "%PDF-1.7`nprogress verifier")
 
 $env:APP_ENV = 'test'; $env:HTTP_ADDR = "127.0.0.1:$Port"; $env:API_DOCS_ENABLED = 'false'
@@ -71,19 +73,21 @@ try {
     $taskResponse = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/tasks" -Method Post -Body @{ name = 'Foundation'; goals_markdown = ''; description_markdown = ''; responsible_user_id = $null; target_date = $null } -Session $member.Session -CSRFToken $member.Response.csrf_token
     $taskID = ($taskResponse.Content | ConvertFrom-Json).task.id
 
-    $metadata = @{ content_markdown = 'Completed **foundation**'; location = @{ latitude = 22.5726; longitude = 88.3639; accuracy_metres = 5; browser_observed_at = (Get-Date).ToUniversalTime().ToString('o') }; location_unavailable_reason = $null; attachments = @(@{ source = 'camera'; browser_last_modified_at = $null }, @{ source = 'upload'; browser_last_modified_at = $null }) } | ConvertTo-Json -Depth 8 -Compress
-    $create = Invoke-WebRequest -Uri "$baseURL/api/v1/projects/$projectID/tasks/$taskID/progress-updates" -Method Post -Form @{ metadata = $metadata; files = @((Get-Item -LiteralPath $photoPath), (Get-Item -LiteralPath $documentPath)) } -Headers @{ 'X-CSRF-Token' = $member.Response.csrf_token; 'Idempotency-Key' = "progress-$runID-0001" } -WebSession $member.Session -SkipHttpErrorCheck
+    $metadata = @{ content_markdown = 'Completed **foundation**'; location = @{ latitude = 22.5726; longitude = 88.3639; accuracy_metres = 5; browser_observed_at = (Get-Date).ToUniversalTime().ToString('o') }; location_unavailable_reason = $null; attachments = @(@{ source = 'camera'; browser_last_modified_at = $null }, @{ source = 'camera'; browser_last_modified_at = $null }, @{ source = 'upload'; browser_last_modified_at = $null }) } | ConvertTo-Json -Depth 8 -Compress
+    $create = Invoke-WebRequest -Uri "$baseURL/api/v1/projects/$projectID/tasks/$taskID/progress-updates" -Method Post -Form @{ metadata = $metadata; files = @((Get-Item -LiteralPath $photoPath), (Get-Item -LiteralPath $videoPath), (Get-Item -LiteralPath $documentPath)) } -Headers @{ 'X-CSRF-Token' = $member.Response.csrf_token; 'Idempotency-Key' = "progress-$runID-0001" } -WebSession $member.Session -SkipHttpErrorCheck
     if ($create.StatusCode -ne 201) { throw "progress create returned $($create.StatusCode) $($create.Content)" }
     $update = ($create.Content | ConvertFrom-Json).progress_update
-    if ($update.attachments.Count -ne 2 -or $update.attachments[0].verification_status -ne 'verified' -or $update.attachments[1].verification_status -ne 'non_verified') { throw 'per-file verification classification was incorrect' }
+    if ($update.attachments.Count -ne 3 -or $update.attachments[0].verification_status -ne 'verified' -or $update.attachments[1].source -ne 'camera' -or $update.attachments[1].media_kind -ne 'video' -or $update.attachments[1].verification_status -ne 'verified' -or $update.attachments[2].verification_status -ne 'non_verified') { throw 'per-file verification classification was incorrect' }
     if ($update.evidence.reported_location.latitude -ne 22.5726 -or $update.evidence.location_status -ne 'verified') { throw 'upload geotag was not preserved' }
 
-    $download = Invoke-WebRequest -Uri "$baseURL$($update.attachments[1].content_path)" -WebSession $member.Session -SkipHttpErrorCheck
+    $download = Invoke-WebRequest -Uri "$baseURL$($update.attachments[2].content_path)" -WebSession $member.Session -SkipHttpErrorCheck
     if ($download.StatusCode -ne 200 -or $download.Headers.'Content-Disposition' -notmatch 'attachment') { throw "attachment download returned $($download.StatusCode)" }
+    $stream = Invoke-WebRequest -Uri "$baseURL$($update.attachments[1].content_path)" -Headers @{ Range = 'bytes=0-7' } -WebSession $member.Session -SkipHttpErrorCheck
+    if ($stream.StatusCode -ne 206 -or $stream.Headers.'Content-Disposition' -notmatch 'inline' -or $stream.Headers.'Accept-Ranges' -notcontains 'bytes') { throw "camera video stream returned $($stream.StatusCode)" }
     $edit = Invoke-JSON -Uri "$baseURL/api/v1/projects/$projectID/tasks/$taskID/progress-updates/$($update.id)" -Method Patch -Body @{ content_markdown = 'Revised progress'; expected_version = 1 } -Session $member.Session -CSRFToken $member.Response.csrf_token
     if ($edit.StatusCode -ne 200 -or ($edit.Content | ConvertFrom-Json).progress_update.revisions.Count -ne 1) { throw "progress edit returned $($edit.StatusCode)" }
 
-    [pscustomobject]@{ Create = 201; CameraPhoto = 'verified'; UploadedDocument = 'non_verified'; Geotagged = $true; Download = 200; Revision = 1; StorageRoot = $storageRoot }
+    [pscustomobject]@{ Create = 201; CameraPhoto = 'verified'; CameraVideo = 'verified'; UploadedDocument = 'non_verified'; Geotagged = $true; Stream = 206; Download = 200; Revision = 1; StorageRoot = $storageRoot }
 }
 finally {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id; $process.WaitForExit() }
