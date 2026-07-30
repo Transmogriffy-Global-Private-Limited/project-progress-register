@@ -1,6 +1,6 @@
 # Domain model
 
-Status: Deployed through migration `000008`; direct camera video support is implemented and verified locally in migration `000009` pending separately authorized deployment.
+Status: Deployed through migration `000009`; guarded data-creating lifecycle verification remains pending on an explicitly disposable target.
 
 ## Aggregate relationships
 

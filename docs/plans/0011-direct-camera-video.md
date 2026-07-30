@@ -1,6 +1,6 @@
 # Direct camera video evidence and streaming plan
 
-Status: Verified locally and published; migration and deployment pending
+Status: Verified and deployed
 
 ## Objective
 
@@ -46,3 +46,9 @@ Allow Chrome/mobile frontend flows to submit a directly captured video as `sourc
 - OpenAPI validation and frontend handoff drift verification pass with all 43 operations and 31 paths represented.
 - The full formatter, module-tidiness, vet, test, build, PowerShell-parse, loopback smoke, and Git-diff verifier passes, as does all-package race detection.
 - The guarded database-live workflow was extended but not executed because it requires an explicitly disposable, fully migrated zero-user target.
+
+## Deployment result
+
+- Production was backed up as one coordinated schema-8 database/filesystem recovery point, migrated through `000009`, and rehosted from clean `main`.
+- The migration ledger reports nine applied and zero pending migrations. Schema inspection confirms camera source and verified-row constraints permit only image/video media, leaving documents excluded.
+- The hosted OpenAPI includes direct-camera video semantics plus authorized byte-range responses. Loopback and public IPv4/IPv6 readiness pass; the data-creating guarded workflow remains restricted to disposable targets.

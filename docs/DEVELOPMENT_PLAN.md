@@ -195,7 +195,7 @@ Canonical guide: `integrations/FRONTEND_INTEGRATION.md`.
 
 ### Feature: Direct camera video evidence and streaming
 
-Status: Verified locally and published; deployment pending
+Status: Verified
 
 Phase: 6
 
@@ -217,7 +217,7 @@ Current implementation slice: None
 
 Last completed slice: Implemented and locally verified direct camera video evidence classification and authorized range streaming
 
-Next expected slice: Publish/deploy direct camera video only when explicitly authorized, otherwise return to disposable lifecycle and restore verification
+Next expected slice: Return to disposable lifecycle and restore verification
 
 Blocked by: None
 

@@ -1,10 +1,10 @@
 # Frontend integration — direct camera photo/video evidence and streaming
 
-Status: Backend implementation verified locally; migration `000009` and deployment pending
+Status: Backend implementation and migration `000009` deployed
 
 This is the focused frontend integration guide for capturing a photo or video directly through the browser, uploading it with the mandatory upload location, rendering the backend verification result, and streaming an authorized stored video. It supplements the complete [`FRONTEND_INTEGRATION.md`](FRONTEND_INTEGRATION.md) handoff and the authoritative [`api/openapi/v1/openapi.yaml`](../../api/openapi/v1/openapi.yaml).
 
-Do not integrate this against production until the backend migration and binary are deployed. Existing production behavior rejects camera-source video.
+Production supports this contract behind `/backend`; keep the feature gated in any environment whose migration status is older than `000009`.
 
 ## 1. Contract summary
 

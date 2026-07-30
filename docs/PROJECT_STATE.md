@@ -1,17 +1,17 @@
 # Project state
 
-## 2026-07-30 — Direct camera video evidence and streaming verified locally
+## 2026-07-30 — Direct camera video evidence and streaming deployed
 
-- Local migration `000009` expands database camera/verified constraints from images to images or videos while documents remain excluded.
+- Migration `000009` expands database camera/verified constraints from images to images or videos while documents remain excluded.
 - The progress service accepts direct camera video and applies the same server-computed location verification rule as camera photos; uploaded/gallery video remains non-verified.
 - The existing authorized attachment content route serves video inline with HTTP byte ranges while retaining attachment disposition for other media.
 - Focused progress/HTTP/migration tests, OpenAPI validation, FE drift verification, the full verifier, and all-package race detection pass. The guarded database-live workflow was extended but not executed because no disposable zero-user target was authorized.
-- This source slice is published on `anubhab-work` and `main` by explicit operator authorization, but migration `000009` is not applied and the new binary is not deployed. Production remains on its previously verified schema and binary.
+- Production was backed up, migrated through `000009`, and rehosted from clean `main`. Nine migrations are applied with none pending; loopback plus public IPv4/IPv6 readiness and the hosted camera-video contract pass.
 
 ## 2026-07-30 — Multiple task responsibilities deployed
 
 - Created and verified a coordinated pre-migration database/filesystem backup, applied migration `000008`, and rehosted clean `main` behind the existing `/backend` boundary.
-- Production reports eight applied and zero pending migrations. The existing singular assignment was copied into `task_responsibilities`; the obsolete task column is absent and plural revision history storage is present.
+- At the plural-responsibility deployment boundary, production reported eight applied and zero pending migrations. The existing singular assignment was copied into `task_responsibilities`; the obsolete task column is absent and plural revision history storage is present. Production has since advanced through migration `000009` as recorded above.
 - Loopback plus public IPv4/IPv6 readiness, public Swagger, and the hosted V2 OpenAPI contract pass. Caddy and the production environment required no changes.
 
 ## 2026-07-30 — Systemd-native maintenance environment parsing
@@ -46,7 +46,7 @@ As of 2026-07-30
 - Optional canonical `BASE_PATH` mounting across application routes, redirects, compatibility pages, assets, cookies, attachment response links, deployment-resolved OpenAPI server selection, and Swagger addressing.
 - Production `ppr.service` running as the unprivileged `ppr` user on `127.0.0.1:18090` with private attachment storage under `/var/lib/ppr/attachments`.
 - Validated and reloaded Caddy routing for `ppr.transev.site/backend/*`; the hostname root and unprefixed application routes are rejected.
-- Reset PostgreSQL 18.4 `pprdb` with zero initial business rows and a generated least-privileged runtime login, then advanced it through all eight current migrations with validated pre-reset and pre-migration dumps.
+- Reset PostgreSQL 18.4 `pprdb` with zero initial business rows and a generated least-privileged runtime login, then advanced it through all nine current migrations with validated pre-reset and pre-migration dumps.
 - Thin `rehost-ppr` interactive hook backed by a tracked installed handler that tests and statically builds the selected PPR checkout, atomically installs the binary with one-version backup, uses the shared guarded service cycle, waits for database readiness, and rolls back failed deployments.
 
 ## Verification state
@@ -92,7 +92,7 @@ Migrations `000002` through `000004` are applied to the clean production databas
 
 The repository contains migration `000005`, chronological progress list/create/detail/update, immutable before/after revisions, shared upload-location/geofence snapshots, per-file verified/non-verified classification, image/document/video allowlists, SHA-256, private staging/final storage, pending reconciliation, authorized downloads, idempotent multipart creation, OpenAPI, tests, documentation, and `verify-live-progress.ps1`.
 
-Every file requires browser-reported coordinates. The deployed migration-`000005` behavior verifies only qualifying camera-source images; existing images, documents, and videos remain non-verified but keep their geotag. Local migration `000009` and its consuming code expand that rule to qualifying direct camera images or videos without changing uploaded/gallery media. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, PowerShell syntax, `git diff --check`, and both loopback API-documentation smoke modes passed for the original slice. The extended guarded verifier still requires a disposable, fully migrated zero-user database and would populate its target.
+Every file requires browser-reported coordinates. Deployed migration `000009` and its consuming code verify qualifying direct camera images or videos without changing uploaded/gallery media, which remains non-verified with its geotag. Focused progress/filestore/HTTP tests, OpenAPI validation and route coverage, module tidiness, vet, all Go tests, build, race detection, `git diff --check`, and both loopback API-documentation smoke modes pass. The extended guarded verifier still requires a disposable, fully migrated zero-user database and would populate its target.
 
 ## Review workflow deployed; database-live verification pending
 
@@ -108,4 +108,4 @@ After backend feature completion, focused identity/projects/progress/HTTP/migrat
 
 ## Next slice
 
-Use only explicitly disposable targets for lifecycle verification and the coordinated restore drill. Production is current at eight applied migrations and the `559ce11` source state.
+Use only explicitly disposable targets for lifecycle verification and the coordinated restore drill. Production is current at nine applied migrations and clean `main` source.

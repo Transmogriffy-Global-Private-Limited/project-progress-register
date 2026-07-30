@@ -11,7 +11,7 @@ Run the verified Go backend as a hardened loopback-only systemd service, reset a
 - Runtime `BASE_PATH` support across routes, redirects, compatibility pages, assets, session cookies, attachment response links, OpenAPI server selection, and embedded Swagger addressing.
 - Root-protected production configuration with generated database, CSRF, and bootstrap secrets.
 - A dedicated `ppr` operating-system user and least-privileged `ppr_runtime` PostgreSQL login.
-- Verified pre-reset database dump, exact-target recreation, the initial five migrations, later reviewed advancement through all eight migrations, and zero initial business rows.
+- Verified pre-reset database dump, exact-target recreation, the initial five migrations, later reviewed advancement through all nine migrations, and zero initial business rows.
 - A hardened `ppr.service`, private `/var/lib/ppr/attachments`, loopback listener, readiness, and restart behavior.
 - Caddy routing for `ppr.transev.site/backend/*`, root rejection, validation, reload, and rollback backup.
 - Authoritative production operations, bootstrap-removal, recovery, and verification documentation.
@@ -30,7 +30,7 @@ Run the verified Go backend as a hardened loopback-only systemd service, reset a
 - `ppr.service` runs as `ppr`, listens only on `127.0.0.1:18090`, and returns `200` for prefixed liveness/readiness.
 - The API-documentation toggle controls both public Swagger and raw schema routes; the operator has temporarily enabled them. `/backend/setup` is available only until the first Admin exists.
 - Attachment `content_path` values include `/backend`, and the served OpenAPI document selects `/backend` as Swagger's default server without changing canonical operation paths.
-- `pprdb` contains all eight applied migrations; it began with zero users/business rows and now contains operator-created application data.
+- `pprdb` contains all nine applied migrations; it began with zero users/business rows and now contains operator-created application data.
 - The runtime login has DML-only application access while migrations use the privileged URL copied from the operator's `.env`.
 - Caddy's full active configuration validates and preserves the prefix to the loopback upstream.
 - Public HTTPS health succeeds after authoritative DNS resolves `ppr.transev.site` to the VPS.
@@ -41,4 +41,4 @@ Passed: focused prefix tests, formatting, module tidiness, vet, all Go tests, ra
 
 The first certificate attempt correctly failed while DNS was absent. After the operator published A `72.61.245.64` and AAAA `2a02:4780:12:5ec8::1`, both authoritative records matched the VPS and reloading Caddy completed certificate issuance and public verification.
 
-Later review found that attachment response links and the OpenAPI server-variable default still pointed at the unprefixed root. The transport and served contract were corrected, verified, and rehosted. Migrations `000006` through `000008`, the reporting/recovery fixes, and plural task responsibility contract were subsequently applied and rehosted through the guarded handler. Production now serves the current bounded timeline and V2 task contracts behind `/backend`, reports eight applied and zero pending migrations, and passes loopback plus public IPv4/IPv6 readiness.
+Later review found that attachment response links and the OpenAPI server-variable default still pointed at the unprefixed root. The transport and served contract were corrected, verified, and rehosted. Migrations `000006` through `000009`, the reporting/recovery fixes, plural task responsibility contract, and direct-camera video streaming behavior were subsequently applied and rehosted through the guarded handler. Production serves the current bounded timeline, V2 task, and camera-video contracts behind `/backend`, reports nine applied and zero pending migrations, and passes loopback plus public IPv4/IPv6 readiness.

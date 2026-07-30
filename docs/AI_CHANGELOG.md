@@ -1,5 +1,14 @@
 # AI changelog
 
+## 2026-07-30 — Direct camera video migration and deployment
+
+Status: Production migration and rehost verified
+
+- Re-ran focused progress/HTTP/migration coverage, all Go tests, vet, OpenAPI validation, frontend handoff drift checks, all-package race detection, static build, Bash/Python checks, and loopback contract verification; PowerShell itself is unavailable on this VPS.
+- Created and validated a coordinated schema-8 PostgreSQL/attachment recovery package, applied migration `000009`, and rehosted clean `main` through the guarded source-build handler.
+- Verified nine applied and zero pending migrations, both camera image/video database constraints, clean binary provenance, the hosted camera-video/OpenAPI contract, loopback plus public IPv4/IPv6 readiness, and authenticated-route isolation.
+- Caddy and environment configuration required no changes. Because the schema advanced, rollback coordinates the pre-migration recovery package with a compatible binary rather than relying on the previous binary alone.
+
 ## 2026-07-30 — Direct camera video verification and streaming
 
 Status: Verified locally and published; not migrated or deployed
