@@ -1,5 +1,15 @@
 # AI changelog
 
+## 2026-07-30 — Direct camera video verification and streaming
+
+Status: Verified locally and published; not migrated or deployed
+
+- Added forward migration `000009` so direct camera images and videos may share the verified-row shape while documents remain barred from camera source and uploaded/gallery media remains non-verified by application policy.
+- Accepted server-detected camera video and applied the same server-computed upload-location result used for camera photos: verified location produces `verified`; all other location results produce `non_verified` with an explicit reason.
+- Kept bounded multipart ingestion and private staging streaming, and made authorized video reads browser-streamable through the existing nested `content_path` with detected MIME, inline disposition, byte ranges, and `206` responses. Images/documents retain attachment disposition.
+- Updated OpenAPI, the complete frontend handoff, a dedicated copy-paste direct-camera-video FE guide, evidence/storage/domain/permission contracts, ADRs, plans, and the guarded live workflow. Added focused service, invalid-source, migration, and HTTP range tests.
+- Focused packages, OpenAPI validation, frontend drift verification, the full repository verifier, and all-package race detection pass. The data-creating live workflow remains unexecuted pending an explicitly disposable, fully migrated zero-user target.
+
 ## 2026-07-30 — Focused V2 task-responsibility frontend guide
 
 Status: Documented and verified

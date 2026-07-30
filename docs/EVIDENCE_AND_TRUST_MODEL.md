@@ -17,16 +17,16 @@ For any file upload, the browser supplies a current location result. Text-only p
 7. requires coordinates for every request containing file bytes and associates every file with the same immutable upload-location snapshot;
 8. stores the server receipt time as authoritative;
 9. stores reported location, accuracy, optional browser time, geofence centre/radius/accuracy threshold, computed distance, result, and reason as one immutable evidence snapshot;
-10. labels an attachment verified only when it is an image reported as an in-Chrome camera capture and the location result passes both accuracy and geofence checks.
+10. labels an attachment verified only when it is an image or video reported as an in-Chrome direct camera capture and the location result passes both accuracy and geofence checks.
 
 Adding reported accuracy to distance is conservative: the reported uncertainty circle must fit inside the geofence. Boundary equality passes. Client-side display is only a preview; the server recomputes the decision.
 
-Uploaded/gallery images, documents, and videos are always non-verified regardless of coordinates. Camera photos with inaccurate, outside, or no-geofence location are non-verified but accepted and geotagged. Missing coordinates reject file bytes but do not reject a text-only update. Storage failure produces pending/failed attachment state rather than a false successful file.
+Uploaded/gallery images, documents, and videos are always non-verified regardless of coordinates. Direct camera photos and videos with inaccurate, outside, or no-geofence location are non-verified but accepted and geotagged. Missing coordinates reject file bytes but do not reject a text-only update. Storage failure produces pending/failed attachment state rather than a false successful file.
 
 ## Trust classifications
 
 - **Server authoritative:** server receipt/upload/edit time, authenticated actor, authorization decision, server-computed SHA-256, server-detected MIME, stored geofence snapshot, computed distance, and verification result.
-- **Browser reported:** coordinates, accuracy, browser-observed time, and the assertion that media came through the active application camera flow.
+- **Browser reported:** coordinates, accuracy, browser-observed time, and the assertion that photo/video media came through the active application camera flow.
 - **Untrusted embedded metadata:** EXIF capture time, EXIF GPS, device/camera model, and any metadata supplied inside a file.
 - **Existing upload:** bytes selected from device storage. The upload geotag is stored, but the file remains non-verified because origin/time are not attested.
 
@@ -34,7 +34,7 @@ Even the “in-application camera” source is application-flow evidence rather 
 
 ## Attachment integrity and recovery
 
-The server streams uploads to a staging directory while enforcing size/type limits and calculating SHA-256. Metadata records use opaque storage identifiers. Step 06 commits explicit pending metadata, atomically renames staged files within the storage volume, marks them available, and reconciles interrupted pending operations immediately and every minute. Downloads always pass authorization and use attachment disposition with MIME-sniffing disabled.
+The server streams uploads to a staging directory while enforcing size/type limits and calculating SHA-256. Metadata records use opaque storage identifiers. Step 06 commits explicit pending metadata, atomically renames staged files within the storage volume, marks them available, and reconciles interrupted pending operations immediately and every minute. Content reads always pass authorization and disable MIME sniffing; videos use inline byte-range streaming while images/documents use attachment disposition.
 
 ## Tamper evidence and blockchain
 

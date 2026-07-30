@@ -6,8 +6,15 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/progress"
 )
+
+type attachmentContent struct{ *bytes.Reader }
+
+func (*attachmentContent) Close() error { return nil }
 
 func TestProgressAttachmentContentPathUsesDeploymentBasePath(t *testing.T) {
 	handler := testHandlerAtBasePath(t, false, nil, "/backend")
@@ -32,6 +39,31 @@ func TestProgressAttachmentContentPathUsesDeploymentBasePath(t *testing.T) {
 	expected := "/backend/api/v1/projects/" + testProjectID + "/tasks/" + testTaskID + "/progress-updates/55555555-5555-4555-8555-555555555555/attachments/66666666-6666-4666-8666-666666666666/content"
 	if len(payload.ProgressUpdate.Attachments) != 1 || payload.ProgressUpdate.Attachments[0].ContentPath != expected {
 		t.Fatalf("content_path=%q, expected %q", payload.ProgressUpdate.Attachments[0].ContentPath, expected)
+	}
+}
+
+func TestVideoAttachmentSupportsAuthorizedInlineRangeStreaming(t *testing.T) {
+	payload := []byte("0123456789abcdef")
+	download := progress.Download{
+		Attachment: progress.Attachment{OriginalName: "camera.mp4", DetectedMIME: "video/mp4", MediaKind: "video"},
+		Content:    &attachmentContent{Reader: bytes.NewReader(payload)},
+	}
+	options := Options{Identity: fakeIdentity{}, Progress: fakeProgress{download: &download}}
+	handler := progressAttachmentDownloadHandler(options, testProjectID, testTaskID, "update", "attachment")
+	request := httptest.NewRequest(http.MethodGet, "/content", nil)
+	request.Header.Set("Range", "bytes=2-5")
+	request.AddCookie(&http.Cookie{Name: SessionCookie, Value: "session-token"})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusPartialContent || response.Body.String() != "2345" {
+		t.Fatalf("response=%d body=%q", response.Code, response.Body.String())
+	}
+	if disposition := response.Header().Get("Content-Disposition"); !strings.HasPrefix(disposition, "inline;") {
+		t.Fatalf("Content-Disposition=%q", disposition)
+	}
+	if response.Header().Get("Accept-Ranges") != "bytes" || response.Header().Get("Content-Range") != "bytes 2-5/16" {
+		t.Fatalf("range headers=%v", response.Header())
 	}
 }
 

@@ -43,7 +43,7 @@ Staging files not referenced by a pending row are retained for 24 hours so in-fl
 
 ## Downloads and security
 
-Downloads use the nested authorized API `content_path`. The HTTP transport constructs this same-origin path from the authorized resource identifiers and prepends the configured `BASE_PATH`; production values therefore begin `/backend/api/v1/`. The backend rechecks current project access, refuses non-available state, opens only a validated opaque key, records download intent in audit, and sends `Content-Disposition: attachment`, detected MIME, `Cache-Control: private, no-store`, and `X-Content-Type-Options: nosniff`.
+Content reads use the nested authorized API `content_path`. The HTTP transport constructs this same-origin path from the authorized resource identifiers and prepends the configured `BASE_PATH`; production values therefore begin `/backend/api/v1/`. The backend rechecks current project access, refuses non-available state, opens only a validated opaque key, records access intent in audit, and sends detected MIME, `Accept-Ranges: bytes`, `Cache-Control: private, no-store`, and `X-Content-Type-Options: nosniff`. Videos use `Content-Disposition: inline` so an authorized browser can seek with range requests; images and documents retain `Content-Disposition: attachment`.
 
 No endpoint exposes the storage root or key. V1 does not execute, render inline, transcode, thumbnail, extract archives, or run a malware-scanning service.
 

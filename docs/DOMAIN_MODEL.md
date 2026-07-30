@@ -1,6 +1,6 @@
 # Domain model
 
-Status: Implemented and deployed through migration `000008`; guarded data-creating lifecycle verification remains pending on an explicitly disposable target.
+Status: Deployed through migration `000008`; direct camera video support is implemented and verified locally in migration `000009` pending separately authorized deployment.
 
 ## Aggregate relationships
 
@@ -55,7 +55,7 @@ Task writes preserve Markdown source only. Sanitized HTML is derived at read/wri
 
 ## Attachments
 
-`progress_attachments` links an update to opaque storage identity and records original filename, reported and server-detected MIME, media kind, size, SHA-256, uploader, server receipt time, browser-reported source, per-file verification result/reason, and pending/available/failed storage state. Every attachment inherits its update geotag. Only a camera-source image with verified location can be verified; uploads, documents, and videos remain non-verified.
+`progress_attachments` links an update to opaque storage identity and records original filename, reported and server-detected MIME, media kind, size, SHA-256, uploader, server receipt time, browser-reported source, per-file verification result/reason, and pending/available/failed storage state. Every attachment inherits its update geotag. A direct camera-source image or video with verified location is verified; otherwise it is non-verified. Uploaded/gallery media and documents always remain non-verified.
 
 `embedded_metadata` is a JSON object reserved for separately labelled untrusted metadata and is empty when extraction is unsupported. Attachment bytes never become publicly addressable durable truth.
 

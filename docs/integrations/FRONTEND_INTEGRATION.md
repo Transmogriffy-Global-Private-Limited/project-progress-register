@@ -834,6 +834,8 @@ They retain `responsible_user_id?: UUID | null` on create, required nullable `re
 
 ### 8.6 Progress, geolocation, and attachments
 
+For a copy-paste-oriented direct camera video integration walkthrough, see [FRONTEND_DIRECT_CAMERA_VIDEO.md](FRONTEND_DIRECT_CAMERA_VIDEO.md).
+
 #### GET `/api/v1/projects/{project_id}/tasks/{task_id}/progress-updates` — `listTaskProgressUpdates`
 
 Returns `200 { progress_updates: ProgressUpdate[] }`, oldest first. Every item includes current content, evidence, and attachments, but `revisions` is intentionally `[]`. Fetch detail only when revision history is needed.
@@ -897,7 +899,7 @@ Location rules:
 - Text only: location may be supplied; otherwise use one unavailable reason or omit both for `not_supplied`.
 - Browser coordinates must be finite; accuracy must be positive; browser time may be null.
 - Outside, inaccurate, and no-geofence coordinates do not reject files. They become non-verified evidence.
-- Only an image from the distinct in-app camera flow should send `source: "camera"`. Gallery/existing images, documents, and videos send `source: "upload"`.
+- Only an image or video produced by the distinct in-app camera flow should send `source: "camera"`. Gallery/existing images and videos plus all documents send `source: "upload"`.
 - Even camera source is browser-reported, not hardware attestation.
 - Display the returned `location_status`, `location_reason`, `verification_status`, and `verification_reason`; never calculate or infer the official label client-side.
 
@@ -906,6 +908,9 @@ Suggested browser capture inputs:
 ```html
 <!-- Separate camera flow -->
 <input type="file" accept="image/*" capture="environment">
+
+<!-- Separate direct video-camera flow -->
+<input type="file" accept="video/*" capture="environment">
 
 <!-- Existing files -->
 <input type="file" multiple>
@@ -916,6 +921,8 @@ Allowed server-detected formats:
 - images: JPEG, PNG, GIF, WebP;
 - documents: PDF, TXT, Markdown, CSV, DOC/DOCX, XLS/XLSX, PPT/PPTX, ODT/ODS/ODP;
 - videos: MP4, WebM, MOV, AVI.
+
+For a direct camera video, append the returned `File` in the same ordered `files` list and append the matching `{ source: "camera" }` descriptor at the same index. A qualifying direct camera photo or video is `verified` only when the backend also returns `location_status: "verified"`; otherwise it is accepted as `non_verified`. Never mark a gallery-selected video as camera source.
 
 The configured defaults are 10 files and 100 MiB per file; hard backend ranges are 1-25 files and 1 MiB-1 GiB per file. There is currently no public runtime-configuration endpoint. Use conservative client limits and always handle `413 request_too_large` and `422 validation_failed`.
 
@@ -942,7 +949,9 @@ Returns `200 { progress_update }` with an appended before/after revision. Eviden
 
 The attachment response already supplies `content_path`; prefer it instead of rebuilding this nested path. It includes `/backend` in production.
 
-For controlled error handling and filename extraction, download with authenticated `fetch`, turn the successful response into a Blob, create a temporary object URL, click a temporary `<a download>`, then revoke the URL. The response uses server-detected MIME, `Content-Disposition: attachment`, `Cache-Control: private, no-store`, and `nosniff`.
+For images/documents and explicit saves, download with authenticated `fetch`, turn the successful response into a Blob, create a temporary object URL, click a temporary `<a download>`, then revoke the URL. Their response uses server-detected MIME, `Content-Disposition: attachment`, `Cache-Control: private, no-store`, and `nosniff`.
+
+For video playback, use the authorized same-origin `content_path` directly as the `<video controls preload="metadata">` source. The browser includes the same-origin session cookie and uses range requests for seeking; the backend responds with detected video MIME, `Content-Disposition: inline`, `Accept-Ranges: bytes`, and `206 Partial Content` when a range is requested. Do not fetch the entire video into a Blob before playback. A `401`, `404`, `410`, or `503` from the media element should offer session recovery/refetch/retry rather than exposing storage details.
 
 State handling:
 
@@ -1137,8 +1146,8 @@ Truth levels:
 - server authoritative: receipt/edit times, actor, SHA-256, detected MIME, selected geofence snapshot, computed distance, result;
 - browser reported: coordinates, accuracy, browser time, and camera-flow assertion;
 - untrusted: embedded metadata/EXIF and original filename/MIME;
-- verified attachment: only camera-source image plus server-verified location;
-- non-verified attachment: every uploaded existing image/document/video and any camera image whose location does not pass.
+- verified attachment: direct camera-source image or video plus server-verified location;
+- non-verified attachment: every uploaded existing image/document/video and any direct camera image/video whose location does not pass.
 
 Every file still has the update's reported upload geotag even when non-verified. Display per-file backend results; do not apply the update's location label to every file as if it were attachment verification.
 

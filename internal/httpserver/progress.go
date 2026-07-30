@@ -109,13 +109,18 @@ func progressAttachmentDownloadHandler(options Options, projectID, taskID, updat
 			return
 		}
 		defer download.Content.Close()
-		disposition := mime.FormatMediaType("attachment", map[string]string{"filename": download.Attachment.OriginalName})
+		dispositionType := "attachment"
+		if download.Attachment.MediaKind == "video" {
+			dispositionType = "inline"
+		}
+		disposition := mime.FormatMediaType(dispositionType, map[string]string{"filename": download.Attachment.OriginalName})
 		if disposition == "" {
 			writeError(w, 500, "internal_error", "The request could not be completed.")
 			return
 		}
 		w.Header().Set("Content-Disposition", disposition)
 		w.Header().Set("Content-Type", download.Attachment.DetectedMIME)
+		w.Header().Set("Accept-Ranges", "bytes")
 		w.Header().Set("Cache-Control", "private, no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		http.ServeContent(w, r, download.Attachment.OriginalName, time.Time{}, download.Content)

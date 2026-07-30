@@ -193,6 +193,20 @@ Scope: One self-contained browser guide covering same-origin cookie/CSRF transpo
 
 Canonical guide: `integrations/FRONTEND_INTEGRATION.md`.
 
+### Feature: Direct camera video evidence and streaming
+
+Status: Verified locally and published; deployment pending
+
+Phase: 6
+
+Depends on: deployed progress attachments, geofence evidence, and private storage.
+
+Objective: Accept direct browser-camera video with the same location-dependent verification treatment as direct camera photos and support authorized byte-range playback through the existing content route.
+
+Scope: forward migration, camera image/video validation and classification, inline range delivery for videos, OpenAPI/frontend contracts, focused/full verification, and repository memory. No live broadcast, transcoding, resumable protocol, public file URL, or new infrastructure.
+
+Detailed plan: `plans/0011-direct-camera-video.md`.
+
 ## Current execution
 
 Current phase: Operational verification
@@ -201,9 +215,9 @@ Active feature: Database lifecycle and restore verification
 
 Current implementation slice: None
 
-Last completed slice: Implemented and locally verified multiple editable task responsibilities through additive V2 task endpoints while retaining V1 compatibility
+Last completed slice: Implemented and locally verified direct camera video evidence classification and authorized range streaming
 
-Next expected slice: Return to database-live lifecycle verification and the coordinated restore drill on explicitly disposable local targets
+Next expected slice: Publish/deploy direct camera video only when explicitly authorized, otherwise return to disposable lifecycle and restore verification
 
 Blocked by: None
 

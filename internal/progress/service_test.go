@@ -13,13 +13,13 @@ import (
 	"github.com/Transmogriffy-Global-Private-Limited/project-progress-register/internal/identity"
 )
 
-func TestCreateGeotagsEveryFileAndVerifiesOnlyCameraPhoto(t *testing.T) {
+func TestCreateGeotagsEveryFileAcceptsCameraVideoAndVerifiesOnlyCameraPhoto(t *testing.T) {
 	repository := &fakeRepository{policy: TaskPolicy{Active: true, Geofence: &GeofenceSnapshot{ID: "geofence", Version: 1, Latitude: 22.5726, Longitude: 88.3639, RadiusMetres: 100, MaxAccuracyMetres: 20}}}
 	storage := &fakeStorage{}
 	service, _ := NewService(repository, storage, fakeRenderer{}, 10)
 	location := &ReportedLocation{Latitude: 22.5726, Longitude: 88.3639, AccuracyMetres: 5}
-	metadata := CreateMetadata{ContentMarkdown: "Work done", Location: location, Attachments: []AttachmentDescriptor{{Source: "camera"}, {Source: "upload"}, {Source: "upload"}}}
-	files := []UploadFile{fakeUpload("photo.jpg"), fakeUpload("report.pdf"), fakeUpload("clip.mp4")}
+	metadata := CreateMetadata{ContentMarkdown: "Work done", Location: location, Attachments: []AttachmentDescriptor{{Source: "camera"}, {Source: "camera"}, {Source: "upload"}}}
+	files := []UploadFile{fakeUpload("photo.jpg"), fakeUpload("clip.mp4"), fakeUpload("report.pdf")}
 	update, err := service.Create(context.Background(), identity.User{ID: "actor", Username: "member", Role: identity.RoleMember, Enabled: true}, "project", "task", "idempotency-key-1234", metadata, files, testAudit())
 	if err != nil {
 		t.Fatal(err)
@@ -30,10 +30,21 @@ func TestCreateGeotagsEveryFileAndVerifiesOnlyCameraPhoto(t *testing.T) {
 	if update.Attachments[0].VerificationStatus != "verified" {
 		t.Fatalf("camera=%#v", update.Attachments[0])
 	}
-	for _, attachment := range update.Attachments[1:] {
-		if attachment.VerificationStatus != "non_verified" {
-			t.Fatalf("attachment=%#v", attachment)
-		}
+	if update.Attachments[1].MediaKind != "video" || update.Attachments[1].Source != "camera" || update.Attachments[1].VerificationStatus != "verified" || !strings.Contains(update.Attachments[1].VerificationReason, "Direct Chrome camera") {
+		t.Fatalf("camera video=%#v", update.Attachments[1])
+	}
+	if update.Attachments[2].VerificationStatus != "non_verified" {
+		t.Fatalf("uploaded document=%#v", update.Attachments[2])
+	}
+}
+
+func TestCreateRejectsCameraSourceDocument(t *testing.T) {
+	service, _ := NewService(&fakeRepository{policy: TaskPolicy{Active: true}}, &fakeStorage{}, fakeRenderer{}, 10)
+	location := &ReportedLocation{Latitude: 22.5726, Longitude: 88.3639, AccuracyMetres: 5}
+	metadata := CreateMetadata{ContentMarkdown: "Work done", Location: location, Attachments: []AttachmentDescriptor{{Source: "camera"}}}
+	_, err := service.Create(context.Background(), identity.User{ID: "actor", Role: identity.RoleMember, Enabled: true}, "project", "task", "idempotency-key-1234", metadata, []UploadFile{fakeUpload("report.pdf")}, testAudit())
+	if err == nil || !strings.Contains(err.Error(), "only for images or videos") {
+		t.Fatalf("camera document error=%v", err)
 	}
 }
 

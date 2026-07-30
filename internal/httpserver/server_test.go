@@ -186,7 +186,7 @@ func TestBasePathScopesRoutesRedirectsAssetsDocsAndCookies(t *testing.T) {
 type fakeIdentity struct{ currentUser *identity.User }
 
 type fakeProjects struct{}
-type fakeProgress struct{}
+type fakeProgress struct{ download *progress.Download }
 
 func (fakeProgress) List(context.Context, identity.User, string, string, progress.AuditContext) ([]progress.Update, error) {
 	return []progress.Update{}, nil
@@ -200,7 +200,11 @@ func (fakeProgress) Create(_ context.Context, actor identity.User, projectID, ta
 func (fakeProgress) Update(_ context.Context, _ identity.User, projectID, taskID, updateID string, input progress.UpdateInput, _ progress.AuditContext) (progress.Update, error) {
 	return progress.Update{ID: updateID, ProjectID: projectID, TaskID: taskID, ContentMarkdown: input.ContentMarkdown, Version: input.ExpectedVersion + 1, Attachments: []progress.Attachment{}, Revisions: []progress.Revision{}}, nil
 }
-func (fakeProgress) Download(context.Context, identity.User, string, string, string, string, progress.AuditContext) (progress.Download, error) {
+
+func (f fakeProgress) Download(context.Context, identity.User, string, string, string, string, progress.AuditContext) (progress.Download, error) {
+	if f.download != nil {
+		return *f.download, nil
+	}
 	return progress.Download{}, progress.ErrNotFound
 }
 func (fakeProgress) ListComments(context.Context, identity.User, string, string, string, progress.AuditContext) ([]progress.Comment, error) {
