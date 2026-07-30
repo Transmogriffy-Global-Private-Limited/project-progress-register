@@ -1,5 +1,14 @@
 # AI changelog
 
+## 2026-07-30 — Focused V2 task-responsibility frontend guide
+
+Status: Documented and verified
+
+- Added `docs/integrations/FRONTEND_TASK_RESPONSIBILITIES_V2.md` with the exact V2 routes, browser transport, TypeScript types, request and response behavior, complete assignment replacement semantics, V1 compatibility, errors, conflict recovery, rollout sequence, and frontend acceptance checks.
+- Explicitly documented that the current project-member candidate query is Admin-only, including safe Admin and Member frontend behavior rather than implying that every editor can enumerate all candidates.
+- Linked the focused guide from the documentation index, exhaustive frontend handoff, and completed implementation plan, and added focused drift assertions to the frontend-documentation verifier.
+- No backend behavior, OpenAPI contract, database state, deployment, or remote system changed in this documentation slice.
+
 ## 2026-07-30 — Multiple task responsibilities migrated and deployed
 
 Status: Production migration and rehost verified

@@ -1,6 +1,6 @@
 # Read this and build the frontend
 
-Status: Complete browser-integration handoff for the deployed v1 backend
+Status: Complete browser-integration handoff for the deployed backend
 
 This is the one human-readable document a frontend engineer needs to build the complete Project Progress Register frontend. It covers the product model, browser transport, authentication, permissions, every request and response shape, all 43 HTTP operations, uploads, geolocation, concurrency, pagination, errors, recovery, and recommended screen data flows.
 
@@ -777,6 +777,8 @@ Returns `200 { geofence }`. Replacement creates a new immutable policy version; 
 ### 8.5 Tasks
 
 Use V2 for all new frontend task work. V1 remains only so the existing singular-assignment integration can migrate without an immediate contract break.
+
+For a copy-paste-oriented migration walkthrough focused on plural, editable task assignments, see [FRONTEND_TASK_RESPONSIBILITIES_V2.md](FRONTEND_TASK_RESPONSIBILITIES_V2.md).
 
 #### GET `/api/v2/projects/{project_id}/tasks` — `listProjectTasksV2`
 

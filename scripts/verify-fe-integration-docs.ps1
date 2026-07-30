@@ -5,8 +5,29 @@ $ErrorActionPreference = 'Stop'
 
 $schemaPath = '.\api\openapi\v1\openapi.yaml'
 $guidePath = '.\docs\integrations\FRONTEND_INTEGRATION.md'
+$taskResponsibilitiesGuidePath = '.\docs\integrations\FRONTEND_TASK_RESPONSIBILITIES_V2.md'
 $schema = Get-Content $schemaPath -Raw
 $guide = Get-Content $guidePath -Raw
+$taskResponsibilitiesGuide = Get-Content $taskResponsibilitiesGuidePath -Raw
+
+$requiredTaskResponsibilitiesGuidance = @(
+    '/api/v2/projects/{project_id}/tasks',
+    'listProjectTasksV2',
+    'createTaskV2',
+    'getProjectTaskV2',
+    'updateProjectTaskV2',
+    'responsible_user_ids',
+    'responsible_members',
+    'task_v2_required',
+    'Current Member-role limitation'
+)
+$missingTaskResponsibilitiesGuidance = @(
+    $requiredTaskResponsibilitiesGuidance |
+        Where-Object { -not $taskResponsibilitiesGuide.Contains($_) }
+)
+if ($missingTaskResponsibilitiesGuidance.Count -gt 0) {
+    throw "Task responsibilities frontend guide is missing required guidance: $($missingTaskResponsibilitiesGuidance -join ', ')"
+}
 
 $operationIDs = @(
     [regex]::Matches($schema, '(?m)^\s+operationId:\s+(\S+)\s*$') |
