@@ -1,5 +1,11 @@
 # AI changelog
 
+## 2026-07-30 — Repair production backup and restore environment loading
+
+- Replaced Bash `source` of systemd environment files in the coordinated backup and guarded restore tools with transient systemd execution using `EnvironmentFile=`.
+- Added a Python-standard-library libpq launcher so `pg_dump`, `psql`, and `pg_restore` receive parsed `PG*` variables instead of a credential-bearing URI argument; preserved the maintenance stop, private recovery package, and empty-target restore guard.
+- Verified Bash parsing and the backup path against the protected production environment; an empty-target restore drill remains separately guarded and was not performed as part of this repair.
+
 ## 2026-07-30 — Multiple task responsibilities implemented and verified locally
 
 Status: Verified locally; not deployed

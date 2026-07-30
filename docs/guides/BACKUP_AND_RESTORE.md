@@ -9,6 +9,8 @@ One valid recovery point contains both:
 
 `scripts/backup-ppr.sh` stops only `ppr.service` while capturing both artifacts, hashes them into `manifest.sha256`, then restarts the service if it was initially active. The maintenance stop prevents new metadata or file finalization from crossing the recovery point. Caddy and PostgreSQL remain running.
 
+Both maintenance scripts pass the protected environment file to a transient systemd unit. Systemd therefore parses the same `EnvironmentFile=` syntax used by `ppr.service`, including unquoted values containing spaces. The small Python-standard-library helper `scripts/libpq-env-exec.py` converts the configured PostgreSQL URL into libpq `PG*` process variables before executing PostgreSQL clients, so the scripts neither source the file as Bash nor expand database credentials into command arguments.
+
 ## Create a backup
 
 Run only with explicit production-maintenance authorization:

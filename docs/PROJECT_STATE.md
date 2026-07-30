@@ -1,5 +1,10 @@
 # Project state
 
+## 2026-07-30 — Systemd-native maintenance environment parsing
+
+- Backup and restore now let systemd parse the protected service environment file instead of sourcing it as Bash, so valid unquoted systemd values containing spaces no longer prevent maintenance.
+- A Python-standard-library helper maps the configured PostgreSQL URL to libpq `PG*` variables, so database credentials remain confined to the transient process environment and do not enter command arguments.
+
 As of 2026-07-30
 
 ## Implemented

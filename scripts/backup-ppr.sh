@@ -3,25 +3,19 @@ set -Eeuo pipefail
 
 env_file=${1:-/etc/ppr/ppr.env}
 backup_root=${2:-/var/backups/ppr}
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+libpq_exec="$script_dir/libpq-env-exec.py"
 
 if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   echo "backup-ppr.sh must run as root so it can coordinate ppr.service and private storage" >&2
   exit 1
 fi
-for command_name in systemctl pg_dump tar sha256sum mktemp; do
+for command_name in systemctl systemd-run python3 pg_dump tar sha256sum mktemp realpath; do
   command -v "$command_name" >/dev/null || { echo "missing required command: $command_name" >&2; exit 1; }
 done
 [[ -f "$env_file" ]] || { echo "environment file not found: $env_file" >&2; exit 1; }
-
-set -a
-# shellcheck disable=SC1090
-source "$env_file"
-set +a
-
-database_url=${MIGRATION_DATABASE_URL:-${DATABASE_URL:-}}
-[[ -n "$database_url" ]] || { echo "DATABASE_URL or MIGRATION_DATABASE_URL is required" >&2; exit 1; }
-[[ -n ${ATTACHMENT_STORAGE_DIR:-} && "$ATTACHMENT_STORAGE_DIR" = /* ]] || { echo "ATTACHMENT_STORAGE_DIR must be an absolute path" >&2; exit 1; }
-[[ -d "$ATTACHMENT_STORAGE_DIR" ]] || { echo "attachment directory not found: $ATTACHMENT_STORAGE_DIR" >&2; exit 1; }
+[[ -f "$libpq_exec" ]] || { echo "libpq environment helper not found: $libpq_exec" >&2; exit 1; }
+env_file=$(realpath -- "$env_file")
 
 install -d -m 0700 -- "$backup_root"
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
@@ -46,8 +40,17 @@ if systemctl is-active --quiet ppr.service; then
   systemctl stop ppr.service
 fi
 
-PGDATABASE="$database_url" pg_dump --format=custom --file="$temporary/database.dump"
-tar --create --gzip --file="$temporary/attachments.tar.gz" --directory="$ATTACHMENT_STORAGE_DIR" .
+systemd-run --quiet --wait --pipe --collect \
+  -p "EnvironmentFile=$env_file" \
+  /bin/bash -c '
+    set -Eeuo pipefail
+    database_url=${MIGRATION_DATABASE_URL:-${DATABASE_URL:-}}
+    [[ -n "$database_url" ]] || { echo "DATABASE_URL or MIGRATION_DATABASE_URL is required" >&2; exit 1; }
+    [[ -n ${ATTACHMENT_STORAGE_DIR:-} && "$ATTACHMENT_STORAGE_DIR" = /* ]] || { echo "ATTACHMENT_STORAGE_DIR must be an absolute path" >&2; exit 1; }
+    [[ -d "$ATTACHMENT_STORAGE_DIR" ]] || { echo "attachment directory not found: $ATTACHMENT_STORAGE_DIR" >&2; exit 1; }
+    python3 "$3" pg_dump --format=custom --file="$1"
+    tar --create --gzip --file="$2" --directory="$ATTACHMENT_STORAGE_DIR" .
+  ' _ "$temporary/database.dump" "$temporary/attachments.tar.gz" "$libpq_exec"
 (
   cd "$temporary"
   sha256sum database.dump attachments.tar.gz > manifest.sha256
